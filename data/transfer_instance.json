@@ -1,0 +1,429 @@
+{
+  "depot": [
+    50,
+    50
+  ],
+  "vehicle_capacity": 180,
+  "tasks": [
+    {
+      "idx": 0,
+      "x": 17.23,
+      "y": 17.4,
+      "demand": 5.48,
+      "service_time": 8.68
+    },
+    {
+      "idx": 1,
+      "x": 18.78,
+      "y": 27.83,
+      "demand": 11.03,
+      "service_time": 7.04
+    },
+    {
+      "idx": 2,
+      "x": 13.75,
+      "y": 17.48,
+      "demand": 4.97,
+      "service_time": 12.06
+    },
+    {
+      "idx": 3,
+      "x": 7.42,
+      "y": 20.18,
+      "demand": 8.85,
+      "service_time": 12.54
+    },
+    {
+      "idx": 4,
+      "x": 10.53,
+      "y": 26.43,
+      "demand": 10.28,
+      "service_time": 6.08
+    },
+    {
+      "idx": 5,
+      "x": 19.89,
+      "y": 28.17,
+      "demand": 6.06,
+      "service_time": 7.87
+    },
+    {
+      "idx": 6,
+      "x": 22.32,
+      "y": 22.39,
+      "demand": 3.83,
+      "service_time": 7.16
+    },
+    {
+      "idx": 7,
+      "x": 20.56,
+      "y": 26.66,
+      "demand": 10.26,
+      "service_time": 14.76
+    },
+    {
+      "idx": 8,
+      "x": 15.58,
+      "y": 32.57,
+      "demand": 6.41,
+      "service_time": 12.62
+    },
+    {
+      "idx": 9,
+      "x": 20.27,
+      "y": 26.9,
+      "demand": 10.76,
+      "service_time": 12.93
+    },
+    {
+      "idx": 10,
+      "x": 18.27,
+      "y": 17.73,
+      "demand": 5.05,
+      "service_time": 9.47
+    },
+    {
+      "idx": 11,
+      "x": 8.28,
+      "y": 20.72,
+      "demand": 3.91,
+      "service_time": 9.34
+    },
+    {
+      "idx": 12,
+      "x": 17.17,
+      "y": 22.84,
+      "demand": 6.33,
+      "service_time": 8.51
+    },
+    {
+      "idx": 13,
+      "x": 11.27,
+      "y": 31.99,
+      "demand": 8.83,
+      "service_time": 13.31
+    },
+    {
+      "idx": 14,
+      "x": 9.74,
+      "y": 28.67,
+      "demand": 4.47,
+      "service_time": 10.55
+    },
+    {
+      "idx": 15,
+      "x": 22.83,
+      "y": 27.24,
+      "demand": 8.01,
+      "service_time": 14.22
+    },
+    {
+      "idx": 16,
+      "x": 20.49,
+      "y": 29.42,
+      "demand": 5.06,
+      "service_time": 6.39
+    },
+    {
+      "idx": 17,
+      "x": 12.05,
+      "y": 21.28,
+      "demand": 4.9,
+      "service_time": 17.31
+    },
+    {
+      "idx": 18,
+      "x": 21.02,
+      "y": 22.03,
+      "demand": 8.9,
+      "service_time": 10.75
+    },
+    {
+      "idx": 19,
+      "x": 21.63,
+      "y": 24.34,
+      "demand": 5.38,
+      "service_time": 8.96
+    },
+    {
+      "idx": 20,
+      "x": 55.98,
+      "y": 61.2,
+      "demand": 8.26,
+      "service_time": 16.77
+    },
+    {
+      "idx": 21,
+      "x": 53.39,
+      "y": 60.51,
+      "demand": 11.98,
+      "service_time": 12.11
+    },
+    {
+      "idx": 22,
+      "x": 48.45,
+      "y": 57.75,
+      "demand": 3.99,
+      "service_time": 13.53
+    },
+    {
+      "idx": 23,
+      "x": 59.67,
+      "y": 63.75,
+      "demand": 3.57,
+      "service_time": 10.58
+    },
+    {
+      "idx": 24,
+      "x": 62.94,
+      "y": 65.47,
+      "demand": 11.74,
+      "service_time": 16.33
+    },
+    {
+      "idx": 25,
+      "x": 47.18,
+      "y": 68.53,
+      "demand": 9.14,
+      "service_time": 12.44
+    },
+    {
+      "idx": 26,
+      "x": 51.27,
+      "y": 67.26,
+      "demand": 4.0,
+      "service_time": 11.22
+    },
+    {
+      "idx": 27,
+      "x": 54.26,
+      "y": 72.26,
+      "demand": 10.88,
+      "service_time": 9.16
+    },
+    {
+      "idx": 28,
+      "x": 55.01,
+      "y": 59.86,
+      "demand": 11.21,
+      "service_time": 16.45
+    },
+    {
+      "idx": 29,
+      "x": 51.78,
+      "y": 67.22,
+      "demand": 8.48,
+      "service_time": 7.83
+    },
+    {
+      "idx": 30,
+      "x": 59.2,
+      "y": 65.63,
+      "demand": 10.01,
+      "service_time": 12.36
+    },
+    {
+      "idx": 31,
+      "x": 47.01,
+      "y": 62.19,
+      "demand": 3.18,
+      "service_time": 17.15
+    },
+    {
+      "idx": 32,
+      "x": 61.06,
+      "y": 70.31,
+      "demand": 5.77,
+      "service_time": 6.7
+    },
+    {
+      "idx": 33,
+      "x": 61.05,
+      "y": 72.15,
+      "demand": 3.77,
+      "service_time": 11.83
+    },
+    {
+      "idx": 34,
+      "x": 48.11,
+      "y": 69.17,
+      "demand": 9.89,
+      "service_time": 7.54
+    },
+    {
+      "idx": 35,
+      "x": 54.6,
+      "y": 65.8,
+      "demand": 5.39,
+      "service_time": 16.47
+    },
+    {
+      "idx": 36,
+      "x": 53.77,
+      "y": 60.39,
+      "demand": 7.85,
+      "service_time": 14.76
+    },
+    {
+      "idx": 37,
+      "x": 50.22,
+      "y": 61.99,
+      "demand": 11.96,
+      "service_time": 13.8
+    },
+    {
+      "idx": 38,
+      "x": 54.01,
+      "y": 65.28,
+      "demand": 4.09,
+      "service_time": 8.7
+    },
+    {
+      "idx": 39,
+      "x": 52.41,
+      "y": 66.41,
+      "demand": 5.07,
+      "service_time": 8.64
+    },
+    {
+      "idx": 40,
+      "x": 78.14,
+      "y": 37.1,
+      "demand": 5.06,
+      "service_time": 16.87
+    },
+    {
+      "idx": 41,
+      "x": 90.75,
+      "y": 28.13,
+      "demand": 5.14,
+      "service_time": 14.03
+    },
+    {
+      "idx": 42,
+      "x": 80.43,
+      "y": 29.12,
+      "demand": 11.42,
+      "service_time": 12.85
+    },
+    {
+      "idx": 43,
+      "x": 84.56,
+      "y": 39.55,
+      "demand": 10.27,
+      "service_time": 8.28
+    },
+    {
+      "idx": 44,
+      "x": 78.55,
+      "y": 33.9,
+      "demand": 6.81,
+      "service_time": 11.6
+    },
+    {
+      "idx": 45,
+      "x": 88.67,
+      "y": 37.77,
+      "demand": 11.86,
+      "service_time": 7.18
+    },
+    {
+      "idx": 46,
+      "x": 83.44,
+      "y": 32.43,
+      "demand": 10.76,
+      "service_time": 8.98
+    },
+    {
+      "idx": 47,
+      "x": 80.04,
+      "y": 34.18,
+      "demand": 6.8,
+      "service_time": 9.34
+    },
+    {
+      "idx": 48,
+      "x": 81.0,
+      "y": 41.77,
+      "demand": 6.99,
+      "service_time": 16.34
+    },
+    {
+      "idx": 49,
+      "x": 85.81,
+      "y": 27.81,
+      "demand": 11.99,
+      "service_time": 16.03
+    },
+    {
+      "idx": 50,
+      "x": 92.5,
+      "y": 41.82,
+      "demand": 10.64,
+      "service_time": 8.0
+    },
+    {
+      "idx": 51,
+      "x": 84.77,
+      "y": 30.42,
+      "demand": 6.61,
+      "service_time": 6.7
+    },
+    {
+      "idx": 52,
+      "x": 83.06,
+      "y": 42.76,
+      "demand": 5.39,
+      "service_time": 15.41
+    },
+    {
+      "idx": 53,
+      "x": 84.28,
+      "y": 33.77,
+      "demand": 11.62,
+      "service_time": 17.95
+    },
+    {
+      "idx": 54,
+      "x": 85.89,
+      "y": 38.49,
+      "demand": 4.39,
+      "service_time": 9.56
+    },
+    {
+      "idx": 55,
+      "x": 92.5,
+      "y": 36.27,
+      "demand": 7.88,
+      "service_time": 14.98
+    },
+    {
+      "idx": 56,
+      "x": 77.91,
+      "y": 36.35,
+      "demand": 7.53,
+      "service_time": 16.23
+    },
+    {
+      "idx": 57,
+      "x": 79.52,
+      "y": 42.37,
+      "demand": 3.72,
+      "service_time": 8.23
+    },
+    {
+      "idx": 58,
+      "x": 86.52,
+      "y": 37.8,
+      "demand": 5.12,
+      "service_time": 7.44
+    },
+    {
+      "idx": 59,
+      "x": 91.24,
+      "y": 30.94,
+      "demand": 8.35,
+      "service_time": 13.43
+    }
+  ]
+}

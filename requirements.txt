@@ -1,1 +1,4 @@
 pyyaml
+matplotlib
+numpy
+scipy
