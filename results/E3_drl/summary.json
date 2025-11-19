@@ -1,11 +1,11 @@
 {
-  "best_cost": 5546.119220222889,
+  "best_cost": 6071.0391877060065,
   "generations": 40,
   "timing": {
-    "T_init": 0.0003536000003805384,
-    "T_local": 2.185939299961319,
-    "T_generations": 2.2274103999952786,
-    "T_total": 4.414056899957359
+    "T_init": 0.0003513000010570977,
+    "T_local": 2.1851539000599587,
+    "T_generations": 2.2277419000092777,
+    "T_total": 4.413598400071351
   },
   "config": {
     "problem": {
@@ -17,14 +17,14 @@
       "data_file": null
     },
     "algorithm": {
-      "removal_strategy": "random",
+      "removal_strategy": "drl",
       "remove_count": 5,
       "population_size": 30,
       "generations": 40,
       "crossover_rate": 0.85,
       "mutation_rate": 0.2,
       "elite_rate": 0.1,
-      "model_path": null,
+      "model_path": "models/drl_model.json",
       "use_gpu": false,
       "train_mode": false
     }

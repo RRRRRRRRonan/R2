@@ -1,0 +1,32 @@
+{
+  "best_cost": 74330.45296102439,
+  "generations": 60,
+  "timing": {
+    "T_init": 0.0006720999990648124,
+    "T_local": 34.11417859996436,
+    "T_generations": 34.25087989999156,
+    "T_total": 68.36640269995405
+  },
+  "config": {
+    "problem": {
+      "instance_type": "random",
+      "num_tasks": 80,
+      "distribution": "clustered",
+      "time_windows": false,
+      "seed": 22,
+      "data_file": null
+    },
+    "algorithm": {
+      "removal_strategy": "shaw",
+      "remove_count": 10,
+      "population_size": 40,
+      "generations": 60,
+      "crossover_rate": 0.85,
+      "mutation_rate": 0.25,
+      "elite_rate": 0.1,
+      "model_path": null,
+      "use_gpu": false,
+      "train_mode": false
+    }
+  }
+}

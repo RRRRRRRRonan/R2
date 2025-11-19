@@ -41,3 +41,46 @@
 2025-11-18 15:07:57,014 | INFO | Gen 39: best=5587.668 avg=5643.044
 2025-11-18 15:07:57,117 | INFO | Best solution cost: 5587.668
 2025-11-18 15:07:57,118 | INFO | Timing: {'T_init': 0.0007406109999976707, 'T_local': 4.152104667999993, 'T_generations': 4.220353039000088, 'T_total': 8.373938929000076}
+2025-11-19 15:07:24,717 | INFO | Loaded configuration: ExperimentConfig(problem=ProblemConfig(instance_type='random', num_tasks=40, distribution='uniform', time_windows=False, seed=11, data_file=None), algorithm=AlgorithmConfig(removal_strategy='random', remove_count=5, population_size=30, generations=40, crossover_rate=0.85, mutation_rate=0.2, elite_rate=0.1, model_path=None, use_gpu=False, train_mode=False), logging=LoggingConfig(log_level='INFO', output_dir='results/E1_random', save_solution=True), training=TrainingConfig(iterations=200, learning_rate=0.05, noise_scale=0.1, validation_interval=20))
+2025-11-19 15:07:24,718 | INFO | Gen 0: best=9479.614 avg=11157.534
+2025-11-19 15:07:24,772 | INFO | Gen 1: best=8200.115 avg=9256.301
+2025-11-19 15:07:24,829 | INFO | Gen 2: best=7208.142 avg=8414.898
+2025-11-19 15:07:24,881 | INFO | Gen 3: best=6822.960 avg=7597.124
+2025-11-19 15:07:24,937 | INFO | Gen 4: best=6381.995 avg=7112.536
+2025-11-19 15:07:24,994 | INFO | Gen 5: best=6367.913 avg=6809.937
+2025-11-19 15:07:25,047 | INFO | Gen 6: best=6210.334 avg=6569.345
+2025-11-19 15:07:25,101 | INFO | Gen 7: best=6097.048 avg=6399.737
+2025-11-19 15:07:25,162 | INFO | Gen 8: best=6077.341 avg=6260.746
+2025-11-19 15:07:25,216 | INFO | Gen 9: best=6007.417 avg=6129.560
+2025-11-19 15:07:25,273 | INFO | Gen 10: best=5867.294 avg=6166.096
+2025-11-19 15:07:25,328 | INFO | Gen 11: best=5827.172 avg=6038.975
+2025-11-19 15:07:25,394 | INFO | Gen 12: best=5796.374 avg=5997.446
+2025-11-19 15:07:25,450 | INFO | Gen 13: best=5723.529 avg=5970.678
+2025-11-19 15:07:25,500 | INFO | Gen 14: best=5720.600 avg=5905.776
+2025-11-19 15:07:25,555 | INFO | Gen 15: best=5715.719 avg=5856.228
+2025-11-19 15:07:25,611 | INFO | Gen 16: best=5714.636 avg=5809.268
+2025-11-19 15:07:25,664 | INFO | Gen 17: best=5632.768 avg=5783.912
+2025-11-19 15:07:25,719 | INFO | Gen 18: best=5632.768 avg=5781.350
+2025-11-19 15:07:25,775 | INFO | Gen 19: best=5612.770 avg=5779.901
+2025-11-19 15:07:25,828 | INFO | Gen 20: best=5612.770 avg=5732.596
+2025-11-19 15:07:25,882 | INFO | Gen 21: best=5598.526 avg=5724.122
+2025-11-19 15:07:25,940 | INFO | Gen 22: best=5591.422 avg=5743.096
+2025-11-19 15:07:25,991 | INFO | Gen 23: best=5588.730 avg=5696.522
+2025-11-19 15:07:26,043 | INFO | Gen 24: best=5579.319 avg=5766.283
+2025-11-19 15:07:26,100 | INFO | Gen 25: best=5579.319 avg=5654.071
+2025-11-19 15:07:26,152 | INFO | Gen 26: best=5579.319 avg=5691.271
+2025-11-19 15:07:26,209 | INFO | Gen 27: best=5572.732 avg=5688.595
+2025-11-19 15:07:26,273 | INFO | Gen 28: best=5571.946 avg=5686.802
+2025-11-19 15:07:26,328 | INFO | Gen 29: best=5571.946 avg=5665.155
+2025-11-19 15:07:26,381 | INFO | Gen 30: best=5565.416 avg=5673.998
+2025-11-19 15:07:26,438 | INFO | Gen 31: best=5564.756 avg=5667.965
+2025-11-19 15:07:26,492 | INFO | Gen 32: best=5559.633 avg=5720.515
+2025-11-19 15:07:26,555 | INFO | Gen 33: best=5559.586 avg=5680.518
+2025-11-19 15:07:26,608 | INFO | Gen 34: best=5559.586 avg=5655.608
+2025-11-19 15:07:26,670 | INFO | Gen 35: best=5559.586 avg=5690.686
+2025-11-19 15:07:26,726 | INFO | Gen 36: best=5553.664 avg=5651.969
+2025-11-19 15:07:26,780 | INFO | Gen 37: best=5553.664 avg=5644.035
+2025-11-19 15:07:26,831 | INFO | Gen 38: best=5546.119 avg=5628.302
+2025-11-19 15:07:26,883 | INFO | Gen 39: best=5546.119 avg=5597.454
+2025-11-19 15:07:26,945 | INFO | Best solution cost: 5546.119
+2025-11-19 15:07:26,945 | INFO | Timing: {'T_init': 0.0003536000003805384, 'T_local': 2.185939299961319, 'T_generations': 2.2274103999952786, 'T_total': 4.414056899957359}

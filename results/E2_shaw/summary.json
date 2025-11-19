@@ -1,11 +1,11 @@
 {
-  "best_cost": 5546.119220222889,
+  "best_cost": 5574.7942390326625,
   "generations": 40,
   "timing": {
-    "T_init": 0.0003536000003805384,
-    "T_local": 2.185939299961319,
-    "T_generations": 2.2274103999952786,
-    "T_total": 4.414056899957359
+    "T_init": 0.0003577999996196013,
+    "T_local": 2.192829699979484,
+    "T_generations": 2.2466290000083973,
+    "T_total": 4.44017429998712
   },
   "config": {
     "problem": {
@@ -17,7 +17,7 @@
       "data_file": null
     },
     "algorithm": {
-      "removal_strategy": "random",
+      "removal_strategy": "shaw",
       "remove_count": 5,
       "population_size": 30,
       "generations": 40,
