@@ -1,0 +1,91 @@
+{
+  "small": {
+    "wilcoxon": [
+      {
+        "baseline": "Ant Colony",
+        "p_value": 1.0,
+        "statistic": 0.0
+      },
+      {
+        "baseline": "Constructive Heuristic",
+        "p_value": 0.25,
+        "statistic": 0.0
+      },
+      {
+        "baseline": "Exact MIP",
+        "p_value": 1.0,
+        "statistic": 0.0
+      },
+      {
+        "baseline": "Genetic Algorithm",
+        "p_value": 0.25,
+        "statistic": 0.0
+      },
+      {
+        "baseline": "Memetic Algorithm",
+        "p_value": 1.0,
+        "statistic": 0.0
+      }
+    ],
+    "friedman": {
+      "statistic": 9.599999999999996,
+      "p_value": 0.0873956533205823
+    }
+  },
+  "medium": {
+    "wilcoxon": [
+      {
+        "baseline": "Ant Colony",
+        "p_value": 0.25,
+        "statistic": 0.0
+      },
+      {
+        "baseline": "Constructive Heuristic",
+        "p_value": 0.25,
+        "statistic": 0.0
+      },
+      {
+        "baseline": "Genetic Algorithm",
+        "p_value": 0.25,
+        "statistic": 0.0
+      },
+      {
+        "baseline": "Memetic Algorithm",
+        "p_value": 1.0,
+        "statistic": 3.0
+      }
+    ],
+    "friedman": {
+      "statistic": 8.0,
+      "p_value": 0.0915781944436709
+    }
+  },
+  "large": {
+    "wilcoxon": [
+      {
+        "baseline": "Ant Colony",
+        "p_value": 0.25,
+        "statistic": 0.0
+      },
+      {
+        "baseline": "Constructive Heuristic",
+        "p_value": 0.25,
+        "statistic": 0.0
+      },
+      {
+        "baseline": "Genetic Algorithm",
+        "p_value": 0.25,
+        "statistic": 0.0
+      },
+      {
+        "baseline": "Memetic Algorithm",
+        "p_value": 1.0,
+        "statistic": 3.0
+      }
+    ],
+    "friedman": {
+      "statistic": 8.0,
+      "p_value": 0.0915781944436709
+    }
+  }
+}

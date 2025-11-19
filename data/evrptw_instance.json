@@ -1,0 +1,229 @@
+{
+  "depot": [
+    50,
+    50
+  ],
+  "vehicle_capacity": 220,
+  "tasks": [
+    {
+      "idx": 0,
+      "x": 61.15,
+      "y": 12.0,
+      "demand": 9.13,
+      "service_time": 9.34
+    },
+    {
+      "idx": 1,
+      "x": 68.92,
+      "y": 64.14,
+      "demand": 18.38,
+      "service_time": 8.52
+    },
+    {
+      "idx": 2,
+      "x": 43.75,
+      "y": 12.38,
+      "demand": 8.28,
+      "service_time": 11.03
+    },
+    {
+      "idx": 3,
+      "x": 12.12,
+      "y": 25.91,
+      "demand": 14.75,
+      "service_time": 11.27
+    },
+    {
+      "idx": 4,
+      "x": 27.64,
+      "y": 57.14,
+      "demand": 17.14,
+      "service_time": 8.04
+    },
+    {
+      "idx": 5,
+      "x": 74.47,
+      "y": 65.85,
+      "demand": 10.1,
+      "service_time": 8.93
+    },
+    {
+      "idx": 6,
+      "x": 86.58,
+      "y": 36.93,
+      "demand": 6.39,
+      "service_time": 8.58
+    },
+    {
+      "idx": 7,
+      "x": 77.8,
+      "y": 58.3,
+      "demand": 17.11,
+      "service_time": 12.38
+    },
+    {
+      "idx": 8,
+      "x": 52.9,
+      "y": 87.85,
+      "demand": 10.68,
+      "service_time": 11.31
+    },
+    {
+      "idx": 9,
+      "x": 76.35,
+      "y": 59.48,
+      "demand": 17.93,
+      "service_time": 11.46
+    },
+    {
+      "idx": 10,
+      "x": 66.37,
+      "y": 13.67,
+      "demand": 8.42,
+      "service_time": 9.74
+    },
+    {
+      "idx": 11,
+      "x": 16.38,
+      "y": 28.62,
+      "demand": 6.52,
+      "service_time": 9.67
+    },
+    {
+      "idx": 12,
+      "x": 60.85,
+      "y": 39.19,
+      "demand": 10.55,
+      "service_time": 9.26
+    },
+    {
+      "idx": 13,
+      "x": 31.36,
+      "y": 84.93,
+      "demand": 14.72,
+      "service_time": 11.65
+    },
+    {
+      "idx": 14,
+      "x": 23.69,
+      "y": 68.33,
+      "demand": 7.45,
+      "service_time": 10.28
+    },
+    {
+      "idx": 15,
+      "x": 89.16,
+      "y": 61.2,
+      "demand": 13.35,
+      "service_time": 12.11
+    },
+    {
+      "idx": 16,
+      "x": 77.43,
+      "y": 72.08,
+      "demand": 8.44,
+      "service_time": 8.19
+    },
+    {
+      "idx": 17,
+      "x": 35.24,
+      "y": 31.42,
+      "demand": 8.16,
+      "service_time": 13.66
+    },
+    {
+      "idx": 18,
+      "x": 80.11,
+      "y": 35.17,
+      "demand": 14.83,
+      "service_time": 10.37
+    },
+    {
+      "idx": 19,
+      "x": 83.16,
+      "y": 46.71,
+      "demand": 8.97,
+      "service_time": 9.48
+    },
+    {
+      "idx": 20,
+      "x": 54.91,
+      "y": 31.02,
+      "demand": 13.77,
+      "service_time": 13.39
+    },
+    {
+      "idx": 21,
+      "x": 41.95,
+      "y": 27.55,
+      "demand": 19.96,
+      "service_time": 11.06
+    },
+    {
+      "idx": 22,
+      "x": 17.27,
+      "y": 13.77,
+      "demand": 6.64,
+      "service_time": 11.76
+    },
+    {
+      "idx": 23,
+      "x": 73.37,
+      "y": 43.77,
+      "demand": 5.95,
+      "service_time": 10.29
+    },
+    {
+      "idx": 24,
+      "x": 89.69,
+      "y": 52.33,
+      "demand": 19.57,
+      "service_time": 13.16
+    },
+    {
+      "idx": 25,
+      "x": 10.92,
+      "y": 67.66,
+      "demand": 15.23,
+      "service_time": 11.22
+    },
+    {
+      "idx": 26,
+      "x": 31.35,
+      "y": 61.28,
+      "demand": 6.67,
+      "service_time": 10.61
+    },
+    {
+      "idx": 27,
+      "x": 46.3,
+      "y": 86.31,
+      "demand": 18.14,
+      "service_time": 9.58
+    },
+    {
+      "idx": 28,
+      "x": 50.05,
+      "y": 24.29,
+      "demand": 18.69,
+      "service_time": 13.22
+    },
+    {
+      "idx": 29,
+      "x": 33.88,
+      "y": 61.12,
+      "demand": 14.13,
+      "service_time": 8.92
+    }
+  ],
+  "charging_stations": [
+    [
+      15,
+      15
+    ],
+    [
+      80,
+      80
+    ]
+  ]
+}

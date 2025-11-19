@@ -1,0 +1,26 @@
+[
+  {
+    "problem": "VRPTW",
+    "method": "Random Removal HEA",
+    "tardiness": 34365.05635600093,
+    "time_sec": 11.451034450001316
+  },
+  {
+    "problem": "VRPTW",
+    "method": "HEA-DRL",
+    "tardiness": 37233.123779059,
+    "time_sec": 11.888119338000251
+  },
+  {
+    "problem": "EVRPTW",
+    "method": "Random Removal HEA",
+    "tardiness": 7315.189223863585,
+    "time_sec": 1.6315801409982669
+  },
+  {
+    "problem": "EVRPTW",
+    "method": "HEA-DRL",
+    "tardiness": 7667.90125255521,
+    "time_sec": 1.68004256399945
+  }
+]
