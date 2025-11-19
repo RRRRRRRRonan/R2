@@ -816,23 +816,28 @@ class ExperimentSuite:
         )
         if self.enable_plots and plot_data:
             scales = list(plot_data.keys())
-            fig, axes = plt.subplots(1, len(scales), figsize=(5 * len(scales), 4), sharey=True)
+            fig, axes = plt.subplots(
+                1, len(scales), figsize=(5 * len(scales), 4), sharey=False
+            )
             if len(scales) == 1:
                 axes = [axes]
             for ax, scale in zip(axes, scales):
                 methods = list(plot_data[scale].keys())
                 positions = np.arange(len(methods))
-                bottoms = np.zeros(len(methods))
+                left = np.zeros(len(methods))
                 for comp in components:
-                    values = np.array([plot_data[scale][method].get(comp, 0.0) for method in methods])
-                    ax.bar(positions, values, bottom=bottoms, label=comp)
-                    bottoms += values
+                    values = np.array(
+                        [plot_data[scale][method].get(comp, 0.0) for method in methods]
+                    )
+                    ax.barh(positions, values, left=left, label=comp)
+                    left += values
                 ax.set_title(f"{scale.title()} instances")
-                ax.set_xticks(positions)
-                ax.set_xticklabels(methods, rotation=20, ha="right")
-                ax.set_ylabel("Runtime (s)")
-            axes[0].legend(loc="upper left", bbox_to_anchor=(1.02, 1.0))
-            plt.tight_layout()
+                ax.set_yticks(positions)
+                ax.set_yticklabels(methods)
+                ax.invert_yaxis()
+                ax.set_xlabel("Runtime (s)")
+            axes[-1].legend(loc="upper left", bbox_to_anchor=(1.05, 1.02))
+            fig.tight_layout()
             plt.savefig(self.output_dir / "runtime_breakdown.png")
             plt.close()
 

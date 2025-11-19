@@ -3,27 +3,27 @@
 ## Small 实例
 | 策略 | 平均延迟 ± std | 平均时间 (s) | 平均最优性缺口 (%) |
 | --- | --- | --- | --- |
-| Exact MIP | 342.0 ± 12.8 | 0.02 | 0.00 |
+| Exact MIP | 342.0 ± 12.8 | 0.01 | 0.00 |
 | Constructive Heuristic | 390.5 ± 11.2 | 0.00 | 14.48 |
 | Genetic Algorithm | 387.5 ± 19.5 | 0.01 | 13.26 |
-| Memetic Algorithm | 342.0 ± 12.8 | 0.11 | 0.00 |
-| Ant Colony | 342.0 ± 12.8 | 0.04 | 0.00 |
-| HEA-DRL | 342.0 ± 12.8 | 0.13 | 0.00 |
+| Memetic Algorithm | 342.0 ± 12.8 | 0.06 | 0.00 |
+| Ant Colony | 342.0 ± 12.8 | 0.02 | 0.00 |
+| HEA-DRL | 342.0 ± 12.8 | 0.06 | 0.00 |
 
 ## Medium 实例
 | 策略 | 平均延迟 ± std | 平均时间 (s) | 平均最优性缺口 (%) |
 | --- | --- | --- | --- |
-| Constructive Heuristic | 3482.7 ± 567.7 | 0.00 | 51.07 |
-| Genetic Algorithm | 2954.6 ± 143.4 | 0.05 | 29.35 |
-| Memetic Algorithm | 2289.9 ± 182.6 | 2.09 | 0.00 |
-| Ant Colony | 2675.7 ± 165.6 | 0.23 | 17.01 |
-| HEA-DRL | 2571.8 ± 163.1 | 2.11 | 12.46 |
+| Constructive Heuristic | 3482.7 ± 567.7 | 0.00 | 49.48 |
+| Genetic Algorithm | 2954.6 ± 143.4 | 0.02 | 27.97 |
+| Memetic Algorithm | 2314.3 ± 181.7 | 1.04 | 0.00 |
+| Ant Colony | 2675.7 ± 165.6 | 0.12 | 15.77 |
+| HEA-DRL | 2571.8 ± 163.1 | 1.05 | 11.26 |
 
 ## Large 实例
 | 策略 | 平均延迟 ± std | 平均时间 (s) | 平均最优性缺口 (%) |
 | --- | --- | --- | --- |
-| Constructive Heuristic | 30656.8 ± 6095.9 | 0.00 | 68.19 |
-| Genetic Algorithm | 20981.4 ± 5961.9 | 0.08 | 12.26 |
-| Memetic Algorithm | 18636.1 ± 5113.7 | 8.23 | 0.00 |
-| Ant Colony | 24311.1 ± 5615.2 | 0.61 | 32.13 |
-| HEA-DRL | 19388.4 ± 5258.6 | 8.73 | 4.13 |
+| Constructive Heuristic | 30656.8 ± 6095.9 | 0.00 | 67.90 |
+| Genetic Algorithm | 20981.4 ± 5961.9 | 0.04 | 12.09 |
+| Memetic Algorithm | 18656.0 ± 5088.0 | 4.21 | 0.00 |
+| Ant Colony | 24311.1 ± 5615.2 | 0.31 | 31.92 |
+| HEA-DRL | 19388.4 ± 5258.6 | 4.32 | 3.97 |
