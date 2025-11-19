@@ -67,9 +67,12 @@ class ExperimentRecord:
 
 
 class ExperimentSuite:
-    def __init__(self, output_dir: pathlib.Path = OUTPUT_DIR) -> None:
+    def __init__(
+        self, output_dir: pathlib.Path = OUTPUT_DIR, enable_plots: bool = False
+    ) -> None:
         self.output_dir = output_dir
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.enable_plots = enable_plots
         self.scales: Dict[str, ScaleSetting] = {
             "small": ScaleSetting(
                 name="small",
@@ -657,41 +660,48 @@ class ExperimentSuite:
             for r in self.records
             if r.instance_id == target_instance and r.stats is not None
         }
+        description = ["# 搜索过程可视化", ""]
         if not target_methods:
-            return
-        plt.figure(figsize=(7, 4))
-        for method, record in target_methods.items():
-            elapsed = [item[0] for item in record.stats]
-            best = [item[1] for item in record.stats]
-            plt.plot(elapsed, best, label=method)
-        plt.xlabel("运行时间 (s)")
-        plt.ylabel("最优延迟")
-        plt.title("Anytime 最优值曲线 (Medium I1)")
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig(self.output_dir / "anytime_best_curve.png")
-        plt.close()
+            description.append("- 当前运行未捕获逐代统计数据，因此无法绘制曲线。")
+        elif self.enable_plots:
+            plt.figure(figsize=(7, 4))
+            for method, record in target_methods.items():
+                elapsed = [item[0] for item in record.stats]
+                best = [item[1] for item in record.stats]
+                plt.plot(elapsed, best, label=method)
+            plt.xlabel("Runtime (s)")
+            plt.ylabel("Best tardiness")
+            plt.title("Anytime best-cost curve (Medium I1)")
+            plt.legend()
+            plt.tight_layout()
+            plt.savefig(self.output_dir / "anytime_best_curve.png")
+            plt.close()
 
-        plt.figure(figsize=(7, 4))
-        for method, record in target_methods.items():
-            avg = [item[2] for item in record.stats]
-            plt.plot(range(len(avg)), avg, label=method)
-        plt.xlabel("代数")
-        plt.ylabel("平均种群适应度")
-        plt.title("种群平均成本 (Medium I1)")
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig(self.output_dir / "anytime_population_fitness.png")
-        plt.close()
+            plt.figure(figsize=(7, 4))
+            for method, record in target_methods.items():
+                avg = [item[2] for item in record.stats]
+                plt.plot(range(len(avg)), avg, label=method)
+            plt.xlabel("Generation")
+            plt.ylabel("Average population cost")
+            plt.title("Population average cost (Medium I1)")
+            plt.legend()
+            plt.tight_layout()
+            plt.savefig(self.output_dir / "anytime_population_fitness.png")
+            plt.close()
 
-        description = [
-            "# 搜索过程可视化",
-            "",
-            "- `anytime_best_curve.png`: HEA-DRL、GA 与 MA 在代表性实例中的anytime 性能。",
-            "- `anytime_population_fitness.png`: 对应的平均种群适应度稳定性。",
-        ]
+            description.extend(
+                [
+                    "- `anytime_best_curve.png`: HEA-DRL、GA 与 MA 在代表性实例中的 anytime 性能。",
+                    "- `anytime_population_fitness.png`: 对应的平均种群适应度稳定性。",
+                ]
+            )
+        else:
+            description.append(
+                "- 若需生成 `anytime_best_curve.png` 与 `anytime_population_fitness.png`，请在本地运行"
+                " `python analysis/experiment_suite.py --with-plots`。"
+            )
         (self.output_dir / "anytime_summary.md").write_text(
-            "\n".join(description), encoding="utf-8"
+            "\n".join(description) + "\n", encoding="utf-8"
         )
 
     def generate_transfer_summary(self) -> None:
@@ -702,13 +712,60 @@ class ExperimentSuite:
             lines.append(
                 f"| {record['problem']} | {record['method']} | {record['tardiness']:.1f} | {record['time_sec']:.2f} |"
             )
+        lines.append("")
+        if self.enable_plots:
+            lines.append(
+                "> 若本地启用了 `--with-plots`，会同时生成 `transfer_tardiness.png` 展示延迟与耗时对比。"
+            )
+        else:
+            lines.append(
+                "> 当前运行跳过了 `transfer_tardiness.png` 绘制，需在本地执行 `python analysis/experiment_suite.py --with-plots` 才会生成。"
+            )
         (self.output_dir / "transfer_summary.md").write_text(
-            "\n".join(lines), encoding="utf-8"
+            "\n".join(lines) + "\n", encoding="utf-8"
         )
         (self.output_dir / "transfer_summary.json").write_text(
             json.dumps(self.transfer_records, indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
+        if not self.transfer_records:
+            return
+        if not self.enable_plots:
+            return
+
+        problems = list(dict.fromkeys(record["problem"] for record in self.transfer_records))
+        methods = list(dict.fromkeys(record["method"] for record in self.transfer_records))
+        tardiness = {
+            (rec["problem"], rec["method"]): rec["tardiness"] for rec in self.transfer_records
+        }
+        runtimes = {
+            (rec["problem"], rec["method"]): rec["time_sec"] for rec in self.transfer_records
+        }
+        positions = np.arange(len(problems))
+        width = 0.8 / max(1, len(methods))
+        fig, axes = plt.subplots(1, 2, figsize=(10, 4), sharex=True)
+        for axis, metric_name, data in zip(
+            axes,
+            ["Total tardiness", "Runtime (s)"],
+            [tardiness, runtimes],
+        ):
+            for idx, method in enumerate(methods):
+                offsets = positions - 0.4 + width / 2 + idx * width
+                axis.bar(
+                    offsets,
+                    [data.get((problem, method), 0.0) for problem in problems],
+                    width=width,
+                    label=method,
+                )
+            axis.set_xticks(positions)
+            axis.set_xticklabels(problems)
+            axis.set_title(metric_name)
+        axes[0].set_ylabel("Value")
+        axes[0].legend(loc="upper left", bbox_to_anchor=(1.0, 1.2), ncol=len(methods))
+        fig.suptitle("Transfer performance comparison")
+        fig.tight_layout()
+        plt.savefig(self.output_dir / "transfer_tardiness.png")
+        plt.close(fig)
 
     def generate_runtime_breakdown(self) -> None:
         components = [
@@ -745,10 +802,19 @@ class ExperimentSuite:
                     f"| {scale} | {method} | {total_time:.2f} | {fmt('T_select_cross')} | {fmt('T_remove')} | "
                     f"{fmt('T_repair')} | {fmt('T_eval')} | {fmt('T_drl_infer')} |"
                 )
+        lines.append("")
+        if self.enable_plots:
+            lines.append(
+                "> 启用 `--with-plots` 时会额外输出 `runtime_breakdown.png` 展示堆叠柱状图。"
+            )
+        else:
+            lines.append(
+                "> 当前运行未生成 `runtime_breakdown.png`，可在本地使用 `python analysis/experiment_suite.py --with-plots` 来绘制。"
+            )
         (self.output_dir / "runtime_breakdown.md").write_text(
-            "\n".join(lines), encoding="utf-8"
+            "\n".join(lines) + "\n", encoding="utf-8"
         )
-        if plot_data:
+        if self.enable_plots and plot_data:
             scales = list(plot_data.keys())
             fig, axes = plt.subplots(1, len(scales), figsize=(5 * len(scales), 4), sharey=True)
             if len(scales) == 1:
@@ -761,10 +827,10 @@ class ExperimentSuite:
                     values = np.array([plot_data[scale][method].get(comp, 0.0) for method in methods])
                     ax.bar(positions, values, bottom=bottoms, label=comp)
                     bottoms += values
-                ax.set_title(f"{scale.title()} 实例")
+                ax.set_title(f"{scale.title()} instances")
                 ax.set_xticks(positions)
                 ax.set_xticklabels(methods, rotation=20, ha="right")
-                ax.set_ylabel("耗时 (s)")
+                ax.set_ylabel("Runtime (s)")
             axes[0].legend(loc="upper left", bbox_to_anchor=(1.02, 1.0))
             plt.tight_layout()
             plt.savefig(self.output_dir / "runtime_breakdown.png")
@@ -789,12 +855,17 @@ def parse_args() -> argparse.Namespace:
         default=OUTPUT_DIR,
         help="目录，用于保存分析产物",
     )
+    parser.add_argument(
+        "--with-plots",
+        action="store_true",
+        help="本地运行时启用，以生成 PNG 图像 (CI/在线环境默认跳过)",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    suite = ExperimentSuite(output_dir=args.output)
+    suite = ExperimentSuite(output_dir=args.output, enable_plots=args.with_plots)
     suite.run()
 
 

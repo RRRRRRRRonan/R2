@@ -38,8 +38,6 @@ python analysis/experiment_suite.py
 
 - `performance_tables.md`：小/中/大规模实例与 Exact MIP、GA、MA、ACO、构造式启发式的量化对比；
 - `significance_report.(md|json)`：HEA-DRL 对各基线的 Wilcoxon p 值以及全体方法的 Friedman 检验；
-- `anytime_best_curve.png` 与 `anytime_population_fitness.png`：展示 anytime 收敛与平均种群适应度；
-- `transfer_summary.md` 与 `transfer_tardiness.png`：将已训练的 HEA-DRL 直接迁移到 VRPTW/EVRPTW；
-- `runtime_breakdown.(md|png)`：细分 GA 操作、修复、评估、DRL 推理耗时，说明额外开销。
+- `anytime_summary.md`、`transfer_summary.md`、`runtime_breakdown.md`：针对搜索过程、迁移实验、运行时开销的文字/表格摘要；
 
-如需自定义输出目录，可传入 `--output` 参数。
+> 默认不会在仓库内生成 PNG 图像，避免阻塞远程 PR。若需在本地绘制 `anytime_best_curve.png`、`transfer_tardiness.png`、`runtime_breakdown.png` 等图表，请运行 `python analysis/experiment_suite.py --with-plots`（同样支持 `--output` 来自定义输出目录）。
