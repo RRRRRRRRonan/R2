@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 import logging
 import pathlib
@@ -73,9 +74,51 @@ def save_summary(result, config: ExperimentConfig, output_dir: pathlib.Path) -> 
         json.dump(summary, fh, indent=2)
 
 
+def save_time_breakdown_plot(timing: dict, output_dir: pathlib.Path) -> None:
+    if plt is None or not timing:
+        return
+    breakdown_keys = [
+        ("Initialization", "T_init"),
+        ("Selection+Cross", "T_select_cross"),
+        ("Removal", "T_remove"),
+        ("Repair", "T_repair"),
+        ("Evaluation", "T_eval"),
+        ("DRL inference", "T_drl_infer"),
+    ]
+    values = []
+    labels = []
+    for label, key in breakdown_keys:
+        value = timing.get(key, 0.0)
+        if value <= 0:
+            continue
+        labels.append(label)
+        values.append(value)
+    if not values:
+        return
+    total = timing.get("T_total", sum(values))
+    pct_labels = [f"{label} ({value / total:.1%})" for label, value in zip(labels, values)]
+    plt.figure(figsize=(6, 4))
+    plt.pie(values, labels=pct_labels, autopct="%1.1f%%", startangle=90)
+    plt.title("Time breakdown")
+    plt.tight_layout()
+    plt.savefig(output_dir / "time_breakdown.png")
+    plt.close()
+
+
+def _maybe_run_training(args: argparse.Namespace, config: ExperimentConfig) -> bool:
+    if not (args.train or config.algorithm.train_mode):
+        return False
+    from train_drl import run_training
+
+    run_training(args.config)
+    return True
+
+
 def main() -> None:
     args = parse_args()
     config = load_config(args.config)
+    if _maybe_run_training(args, config):
+        return
     instance = generate_random_instance(config.problem)
     output_dir = pathlib.Path(config.logging.output_dir)
     logger = setup_logger(output_dir, config.logging.log_level)
@@ -84,6 +127,7 @@ def main() -> None:
     algo = HEA(instance, config.algorithm, logger, agent)
     result = algo.run()
     save_convergence_plot(result.stats, output_dir, label=config.algorithm.removal_strategy)
+    save_time_breakdown_plot(result.timing, output_dir)
     save_summary(result, config, output_dir)
     if config.logging.save_solution:
         result.best_solution.save(str(output_dir / "best_solution.json"))

@@ -37,6 +37,7 @@ class HEA:
         self.agent = agent
         self.removal_strategy = self._create_removal_strategy()
         self.rng = random.Random(config.seed if hasattr(config, "seed") else None)
+        self.using_drl = self.config.removal_strategy.lower() == "drl"
 
     def _create_removal_strategy(self) -> RemovalStrategy:
         if self.config.removal_strategy.lower() == "drl":
@@ -82,10 +83,18 @@ class HEA:
             a, b = self.rng.sample(range(len(solution.order)), 2)
             solution.order[a], solution.order[b] = solution.order[b], solution.order[a]
 
-    def local_search(self, solution: Solution) -> None:
+    def local_search(self, solution: Solution) -> dict[str, float]:
+        timing: dict[str, float] = {"remove": 0.0, "repair": 0.0, "drl_infer": 0.0}
+        remove_start = time.perf_counter()
         selected = self.removal_strategy.select(solution.order, self.config.remove_count)
+        timing["remove"] = time.perf_counter() - remove_start
+        if self.using_drl:
+            timing["drl_infer"] = timing["remove"]
         removed_tasks = solution.remove_tasks(selected)
+        repair_start = time.perf_counter()
         greedy_repair(solution, removed_tasks)
+        timing["repair"] = time.perf_counter() - repair_start
+        return timing
 
     def run(self) -> HEAResult:
         timing: dict[str, float] = {}
@@ -95,32 +104,76 @@ class HEA:
         stats: List[GenerationStats] = []
         for gen in range(self.config.generations):
             gen_start = time.perf_counter()
+            eval_start = time.perf_counter()
             costs, best_cost, avg_cost = self.evaluate_population(population)
+            eval_time = time.perf_counter() - eval_start
+            timing.setdefault("T_eval", 0.0)
+            timing["T_eval"] += eval_time
             stats.append(GenerationStats(generation=gen, best_cost=best_cost, average_cost=avg_cost))
             self.logger.info("Gen %s: best=%.3f avg=%.3f", gen, best_cost, avg_cost)
 
             elites = self._select_elites(population, costs)
             children: List[Solution] = []
+            select_cross_time = 0.0
+            remove_time = 0.0
+            repair_time = 0.0
+            drl_time = 0.0
             while len(children) < self.config.population_size - len(elites):
+                op_start = time.perf_counter()
                 parent_a, parent_b = self.select_parents(population, costs)
                 if self.rng.random() < self.config.crossover_rate:
                     child = self.crossover(parent_a, parent_b)
                 else:
                     child = parent_a.copy()
                 self.mutate(child)
-                ls_start = time.perf_counter()
-                self.local_search(child)
-                timing.setdefault("T_local", 0.0)
-                timing["T_local"] += time.perf_counter() - ls_start
+                select_cross_time += time.perf_counter() - op_start
+
+                ls_timing = self.local_search(child)
+                remove_time += ls_timing["remove"]
+                repair_time += ls_timing["repair"]
+                drl_time += ls_timing["drl_infer"]
                 children.append(child)
             population = elites + children
+            timing.setdefault("T_select_cross", 0.0)
+            timing["T_select_cross"] += select_cross_time
+            timing.setdefault("T_remove", 0.0)
+            timing["T_remove"] += remove_time
+            timing.setdefault("T_repair", 0.0)
+            timing["T_repair"] += repair_time
+            if drl_time:
+                timing.setdefault("T_drl_infer", 0.0)
+                timing["T_drl_infer"] += drl_time
+            gen_time = time.perf_counter() - gen_start
             timing.setdefault("T_generations", 0.0)
-            timing["T_generations"] += time.perf_counter() - gen_start
+            timing["T_generations"] += gen_time
+            self.logger.info(
+                "[Time] Generation %s: Select+Cross=%.4fs, Remove=%.4fs, Repair=%.4fs, Eval=%.4fs, TotalGen=%.4fs",
+                gen,
+                select_cross_time,
+                remove_time,
+                repair_time,
+                eval_time,
+                gen_time,
+            )
 
+        eval_start = time.perf_counter()
         final_costs, _, _ = self.evaluate_population(population)
+        timing.setdefault("T_eval", 0.0)
+        timing["T_eval"] += time.perf_counter() - eval_start
         best_idx = min(range(len(population)), key=lambda i: final_costs[i])
         best_solution = population[best_idx]
-        timing["T_total"] = sum(timing.values()) + timing.get("T_init", 0.0)
+        total_runtime = time.perf_counter() - start
+        timing["T_total"] = total_runtime
+        self.logger.info(
+            "[Time] Total runtime: %.3fs (Init=%.3fs, Select+Cross=%.3fs, Remove=%.3fs, Repair=%.3fs, Eval=%.3fs, DRL_infer=%.3fs)",
+            total_runtime,
+            timing.get("T_init", 0.0),
+            timing.get("T_select_cross", 0.0),
+            timing.get("T_remove", 0.0),
+            timing.get("T_repair", 0.0),
+            timing.get("T_eval", 0.0),
+            timing.get("T_drl_infer", 0.0),
+        )
         return HEAResult(best_solution=best_solution, stats=stats, timing=timing)
 
     def _select_elites(self, population: List[Solution], costs: List[float]) -> List[Solution]:

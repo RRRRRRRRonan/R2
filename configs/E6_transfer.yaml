@@ -1,0 +1,18 @@
+problem:
+  instance_type: "transfer"
+  num_tasks: 60
+  distribution: "clustered"
+  data_file: "data/transfer_instance.json"
+algorithm:
+  removal_strategy: "drl"
+  remove_count: 8
+  population_size: 45
+  generations: 70
+  crossover_rate: 0.85
+  mutation_rate: 0.25
+  elite_rate: 0.1
+  model_path: "models/drl_model.json"
+logging:
+  log_level: "INFO"
+  output_dir: "results/E6_transfer"
+  save_solution: true
