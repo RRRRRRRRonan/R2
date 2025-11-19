@@ -112,6 +112,8 @@ Route 2: 0 -> 2 -> 8 -> 7 -> 0  (distance=98.3, load=25)
 
 有了上述文件，用户可进行进一步的数据处理：
 
+- 若需直接获得 README 中列出的五类统计材料，可运行 `python analysis/experiment_suite.py`。脚本会自动生成代表性实例，运行 Exact、构造式启发式、GA/MA/ACO 以及 HEA-DRL，并在 `results/analysis/` 下输出性能对比表、显著性检验、anytime 曲线、迁移与运行时间拆解图。
+
 使用脚本提取日志中的关键值汇总到表格。例如从每个 .log 提取“Best solution cost”和“Total runtime”，汇总得到表1比较不同策略性能。
 
 将 .log 中每代最优值列出，可在Excel或Python中绘制更定制化的曲线。例如比较多条策略曲线在一张图上。

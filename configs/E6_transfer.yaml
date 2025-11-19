@@ -2,7 +2,7 @@ problem:
   instance_type: "transfer"
   num_tasks: 60
   distribution: "clustered"
-  data_file: "data/transfer_instance.json"
+  data_file: "data/vrptw_instance.json"
 algorithm:
   removal_strategy: "drl"
   remove_count: 8

@@ -20,6 +20,7 @@ class GenerationStats:
     generation: int
     best_cost: float
     average_cost: float
+    elapsed_sec: float
 
 
 @dataclasses.dataclass
@@ -109,7 +110,15 @@ class HEA:
             eval_time = time.perf_counter() - eval_start
             timing.setdefault("T_eval", 0.0)
             timing["T_eval"] += eval_time
-            stats.append(GenerationStats(generation=gen, best_cost=best_cost, average_cost=avg_cost))
+            elapsed = time.perf_counter() - start
+            stats.append(
+                GenerationStats(
+                    generation=gen,
+                    best_cost=best_cost,
+                    average_cost=avg_cost,
+                    elapsed_sec=elapsed,
+                )
+            )
             self.logger.info("Gen %s: best=%.3f avg=%.3f", gen, best_cost, avg_cost)
 
             elites = self._select_elites(population, costs)
