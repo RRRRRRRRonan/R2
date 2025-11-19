@@ -1,0 +1,17 @@
+problem:
+  instance_type: "random"
+  num_tasks: 40
+  distribution: "uniform"
+  seed: 11
+algorithm:
+  removal_strategy: "shaw"
+  remove_count: 5
+  population_size: 30
+  generations: 40
+  crossover_rate: 0.85
+  mutation_rate: 0.2
+  elite_rate: 0.1
+logging:
+  log_level: "INFO"
+  output_dir: "results/E2_shaw"
+  save_solution: true
