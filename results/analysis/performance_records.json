@@ -1,0 +1,104 @@
+{
+  "small": {
+    "Exact MIP": {
+      "mean_tardiness": 341.9703548447834,
+      "std_tardiness": 12.798882471432478,
+      "mean_time": 0.012847450001572724,
+      "mean_gap": 0.0
+    },
+    "Constructive Heuristic": {
+      "mean_tardiness": 390.50821946031635,
+      "std_tardiness": 11.22749453876142,
+      "mean_time": 2.7350000891601667e-05,
+      "mean_gap": 14.476823319214658
+    },
+    "Genetic Algorithm": {
+      "mean_tardiness": 387.49627371226654,
+      "std_tardiness": 19.5031092220932,
+      "mean_time": 0.003408199998375494,
+      "mean_gap": 13.258023343063162
+    },
+    "Memetic Algorithm": {
+      "mean_tardiness": 341.9703548447834,
+      "std_tardiness": 12.798882471432478,
+      "mean_time": 0.02880350000123144,
+      "mean_gap": 0.0
+    },
+    "Ant Colony": {
+      "mean_tardiness": 341.9703548447834,
+      "std_tardiness": 12.798882471432478,
+      "mean_time": 0.014947499996196711,
+      "mean_gap": 0.0
+    },
+    "HEA-DRL": {
+      "mean_tardiness": 341.9703548447834,
+      "std_tardiness": 12.798882471432478,
+      "mean_time": 0.028878449997137068,
+      "mean_gap": 0.0
+    }
+  },
+  "medium": {
+    "Constructive Heuristic": {
+      "mean_tardiness": 3482.71110013491,
+      "std_tardiness": 567.6924336949724,
+      "mean_time": 0.00011884999548783526,
+      "mean_gap": 52.00651257464279
+    },
+    "Genetic Algorithm": {
+      "mean_tardiness": 2954.612478217239,
+      "std_tardiness": 143.37724882676957,
+      "mean_time": 0.011783149999246234,
+      "mean_gap": 30.09837457742729
+    },
+    "Memetic Algorithm": {
+      "mean_tardiness": 2275.912136742534,
+      "std_tardiness": 173.75768339800038,
+      "mean_time": 0.5305860499975097,
+      "mean_gap": 0.0
+    },
+    "Ant Colony": {
+      "mean_tardiness": 2675.671072808278,
+      "std_tardiness": 165.56495276485748,
+      "mean_time": 0.07321595000030356,
+      "mean_gap": 17.695404276242964
+    },
+    "HEA-DRL": {
+      "mean_tardiness": 2571.8317960335266,
+      "std_tardiness": 163.0532356711101,
+      "mean_time": 0.5379255000007106,
+      "mean_gap": 13.114594925326294
+    }
+  },
+  "large": {
+    "Constructive Heuristic": {
+      "mean_tardiness": 30656.79058951068,
+      "std_tardiness": 6095.932864108077,
+      "mean_time": 0.0003840500030491967,
+      "mean_gap": 68.9862197836782
+    },
+    "Genetic Algorithm": {
+      "mean_tardiness": 20981.3871105309,
+      "std_tardiness": 5961.906114090661,
+      "mean_time": 0.023173300000053132,
+      "mean_gap": 12.804055489173084
+    },
+    "Memetic Algorithm": {
+      "mean_tardiness": 18539.322441510296,
+      "std_tardiness": 5063.5708740996115,
+      "mean_time": 2.2512189999979455,
+      "mean_gap": 0.0
+    },
+    "Ant Colony": {
+      "mean_tardiness": 24311.147066248832,
+      "std_tardiness": 5615.200029425541,
+      "mean_time": 0.19266785000218078,
+      "mean_gap": 32.76435280919243
+    },
+    "HEA-DRL": {
+      "mean_tardiness": 19388.414683904713,
+      "std_tardiness": 5258.617894251939,
+      "mean_time": 2.2111746500013396,
+      "mean_gap": 4.6386368709604735
+    }
+  }
+}

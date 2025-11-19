@@ -33,6 +33,7 @@ class AlgorithmConfig:
     model_path: str | None = None
     use_gpu: bool = False
     train_mode: bool = False
+    seed: int | None = None
 
 
 @dataclasses.dataclass
