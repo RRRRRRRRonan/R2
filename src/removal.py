@@ -67,6 +67,49 @@ class ShawRemovalStrategy(RemovalStrategy):
         return removed
 
 
+class WorstSlackRemovalStrategy(RemovalStrategy):
+    def __init__(self, instance: ProblemInstance) -> None:
+        super().__init__(instance)
+
+    def _slacks(self, solution_order: List[int]) -> List[tuple[int, float]]:
+        time_now = 0.0
+        slacks: List[tuple[int, float]] = []
+        prev_idx: int | None = None
+        for idx in solution_order:
+            task = self.instance.tasks[idx]
+            travel = self.instance.distance_idx(prev_idx, idx)
+            arrive = time_now + travel
+            slack = task.due_time - arrive
+            slacks.append((idx, slack))
+            time_now = arrive + task.service_time
+            prev_idx = idx
+        return slacks
+
+    def select(self, solution_order: List[int], num_remove: int) -> List[int]:
+        if not solution_order:
+            return []
+        num_remove = min(num_remove, len(solution_order))
+        slacks = self._slacks(solution_order)
+        worst = sorted(slacks, key=lambda x: x[1])[:num_remove]
+        return [idx for idx, _ in worst]
+
+
+class MaxDistanceRemovalStrategy(RemovalStrategy):
+    def __init__(self, instance: ProblemInstance, seed: int | None = None) -> None:
+        super().__init__(instance)
+        self.rng = random.Random(seed)
+
+    def select(self, solution_order: List[int], num_remove: int) -> List[int]:
+        if not solution_order:
+            return []
+        num_remove = min(num_remove, len(solution_order))
+        distances = [
+            (idx, self.instance.distance(None, self.instance.tasks[idx])) for idx in solution_order
+        ]
+        distances.sort(key=lambda x: x[1], reverse=True)
+        return [idx for idx, _ in distances[:num_remove]]
+
+
 class DRLRemovalStrategy(RemovalStrategy):
     def __init__(self, instance: ProblemInstance, agent: DRLAgent) -> None:
         super().__init__(instance)
@@ -76,13 +119,54 @@ class DRLRemovalStrategy(RemovalStrategy):
         return self.agent.select_tasks(self.instance, solution_order, num_remove)
 
 
+class HybridDRLRemovalStrategy(RemovalStrategy):
+    def __init__(self, instance: ProblemInstance, agent: DRLAgent, alpha: float = 1.0) -> None:
+        super().__init__(instance)
+        self.agent = agent
+        self.shaw = ShawRemovalStrategy(instance, alpha=alpha)
+
+    def select(self, solution_order: List[int], num_remove: int) -> List[int]:
+        if not solution_order:
+            return []
+        num_remove = min(num_remove, len(solution_order))
+        primary = max(1, math.ceil(num_remove * 0.7))
+        drl_seed = set(self.agent.select_tasks(self.instance, solution_order, primary))
+        remaining = [idx for idx in solution_order if idx not in drl_seed]
+        selected = list(drl_seed)
+        while len(selected) < num_remove and remaining:
+            best_idx = None
+            best_score = float("inf")
+            for candidate in remaining:
+                score = min(
+                    self.shaw.similarity(self.instance.tasks[candidate], self.instance.tasks[s])
+                    for s in selected
+                )
+                if score < best_score:
+                    best_score = score
+                    best_idx = candidate
+            if best_idx is None:
+                break
+            selected.append(best_idx)
+            remaining.remove(best_idx)
+        while len(selected) < num_remove and remaining:
+            selected.append(remaining.pop())
+        return selected
+
+
 def build_removal_strategy(name: str, instance: ProblemInstance, **kwargs) -> RemovalStrategy:
     name = name.lower()
     if name == "random":
         return RandomRemovalStrategy(instance, seed=kwargs.get("seed"))
     if name == "shaw":
         return ShawRemovalStrategy(instance)
+    if name == "worst_slack":
+        return WorstSlackRemovalStrategy(instance)
+    if name == "max_distance":
+        return MaxDistanceRemovalStrategy(instance, seed=kwargs.get("seed"))
     if name == "drl":
         agent: DRLAgent = kwargs["agent"]
         return DRLRemovalStrategy(instance, agent)
+    if name == "drl_hybrid":
+        agent = kwargs["agent"]
+        return HybridDRLRemovalStrategy(instance, agent)
     raise ValueError(f"Unknown removal strategy: {name}")

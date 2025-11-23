@@ -38,20 +38,52 @@ class HEA:
         self.agent = agent
         self.removal_strategy = self._create_removal_strategy()
         self.rng = random.Random(config.seed if hasattr(config, "seed") else None)
-        self.using_drl = self.config.removal_strategy.lower() == "drl"
+        self.using_drl = self.config.removal_strategy.lower() in {"drl", "drl_hybrid"}
 
     def _create_removal_strategy(self) -> RemovalStrategy:
-        if self.config.removal_strategy.lower() == "drl":
+        name = self.config.removal_strategy.lower()
+        if name in {"drl", "drl_hybrid"}:
             if not self.agent:
                 raise ValueError("DRL strategy requires an agent")
-            return build_removal_strategy("drl", self.instance, agent=self.agent)
-        if self.config.removal_strategy.lower() == "random":
-            return build_removal_strategy("random", self.instance, seed=self.config.seed if hasattr(self.config, "seed") else None)
+            return build_removal_strategy(name, self.instance, agent=self.agent)
+        if name == "random":
+            return build_removal_strategy(
+                "random",
+                self.instance,
+                seed=self.config.seed if hasattr(self.config, "seed") else None,
+            )
         return build_removal_strategy("shaw", self.instance)
 
     def initialize_population(self) -> List[Solution]:
-        population = [random_solution(self.instance, seed=self.rng.randint(0, 1_000_000)) for _ in range(self.config.population_size)]
+        population: List[Solution] = []
+        population.append(random_solution(self.instance, seed=self.rng.randint(0, 1_000_000)))
+        population.append(random_solution(self.instance, seed=self.rng.randint(0, 1_000_000)))
+        while len(population) < self.config.population_size:
+            population.append(random_solution(self.instance, seed=self.rng.randint(0, 1_000_000)))
         return population
+
+    def _nearest_neighbor_solution(self) -> Solution:
+        remaining = set(range(len(self.instance.tasks)))
+        order: List[int] = []
+        current: int | None = None
+        while remaining:
+            def distance_to(idx: int) -> float:
+                if current is None:
+                    return self.instance.distance(None, self.instance.tasks[idx])
+                return self.instance.distance(self.instance.tasks[current], self.instance.tasks[idx])
+
+            next_idx = min(remaining, key=distance_to)
+            order.append(next_idx)
+            remaining.remove(next_idx)
+            current = next_idx
+        return Solution.from_order(self.instance, order)
+
+    def _sorted_by_depot_solution(self) -> Solution:
+        order = sorted(
+            range(len(self.instance.tasks)),
+            key=lambda idx: self.instance.distance(None, self.instance.tasks[idx]),
+        )
+        return Solution.from_order(self.instance, order)
 
     def evaluate_population(self, population: List[Solution]) -> Tuple[List[float], float, float]:
         costs = [sol.cost() for sol in population]
@@ -69,20 +101,33 @@ class HEA:
     def crossover(self, parent_a: Solution, parent_b: Solution) -> Solution:
         size = len(parent_a.order)
         start, end = sorted(self.rng.sample(range(size), 2))
-        child_order = [None] * size
+        child_order: List[int | None] = [None] * size
         child_order[start:end] = parent_a.order[start:end]
         fill = [idx for idx in parent_b.order if idx not in child_order[start:end]]
         pointer = 0
+        all_ids = set(range(len(self.instance.tasks)))
+        pb_len = len(parent_b.order)
         for i in range(size):
             if child_order[i] is None:
-                child_order[i] = fill[pointer]
-                pointer += 1
-        return Solution(self.instance, child_order)  # type: ignore[arg-type]
+                if pointer < len(fill):
+                    child_order[i] = fill[pointer]
+                    pointer += 1
+                else:
+                    remaining = all_ids - set(x for x in child_order if x is not None)
+                    if remaining:
+                        child_order[i] = self.rng.choice(list(remaining))
+                    else:
+                        # Fallback: reuse a random id to keep array filled
+                        child_order[i] = parent_b.order[self.rng.randrange(pb_len)]
+        # type: ignore[arg-type]
+        return Solution.from_order(self.instance, [idx for idx in child_order if idx is not None])
 
     def mutate(self, solution: Solution) -> None:
         if self.rng.random() < self.config.mutation_rate:
-            a, b = self.rng.sample(range(len(solution.order)), 2)
-            solution.order[a], solution.order[b] = solution.order[b], solution.order[a]
+            order = solution.order
+            a, b = self.rng.sample(range(len(order)), 2)
+            order[a], order[b] = order[b], order[a]
+            solution.routes = Solution.from_order(self.instance, order).routes
 
     def local_search(self, solution: Solution) -> dict[str, float]:
         timing: dict[str, float] = {"remove": 0.0, "repair": 0.0, "drl_infer": 0.0}
@@ -102,11 +147,18 @@ class HEA:
         start = time.perf_counter()
         population = self.initialize_population()
         timing["T_init"] = time.perf_counter() - start
+        eval_budget = self.config.eval_budget
+        time_budget = self.config.time_budget
+        eval_count = 0
         stats: List[GenerationStats] = []
         for gen in range(self.config.generations):
+            if time_budget is not None and time.perf_counter() - start >= time_budget:
+                self.logger.info("Stopping at generation %s due to time budget %.2fs", gen, time_budget)
+                break
             gen_start = time.perf_counter()
             eval_start = time.perf_counter()
             costs, best_cost, avg_cost = self.evaluate_population(population)
+            eval_count += len(population)
             eval_time = time.perf_counter() - eval_start
             timing.setdefault("T_eval", 0.0)
             timing["T_eval"] += eval_time
@@ -164,9 +216,18 @@ class HEA:
                 eval_time,
                 gen_time,
             )
+            if eval_budget is not None and eval_count >= eval_budget:
+                self.logger.info(
+                    "Stopping at generation %s due to evaluation budget (used %s / %s)",
+                    gen,
+                    eval_count,
+                    eval_budget,
+                )
+                break
 
         eval_start = time.perf_counter()
         final_costs, _, _ = self.evaluate_population(population)
+        eval_count += len(population)
         timing.setdefault("T_eval", 0.0)
         timing["T_eval"] += time.perf_counter() - eval_start
         best_idx = min(range(len(population)), key=lambda i: final_costs[i])
