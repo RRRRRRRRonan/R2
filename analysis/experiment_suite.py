@@ -8,6 +8,7 @@ import dataclasses
 import json
 import logging
 import math
+import os
 import pathlib
 import random
 import statistics
@@ -18,8 +19,30 @@ from typing import Dict, List, Sequence
 
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
 
-import matplotlib.pyplot as plt
+def _ensure_matplotlib_dir() -> None:
+    """Force Matplotlib to use a writable cache dir to avoid permission errors."""
+    if os.environ.get("MPLCONFIGDIR"):
+        return
+    cache_dir = pathlib.Path(__file__).resolve().parents[1] / ".cache" / "matplotlib"
+    try:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        os.environ["MPLCONFIGDIR"] = str(cache_dir)
+    except OSError:
+        # If mkdir fails, let Matplotlib fall back to default temp dir.
+        return
+
+
+_ensure_matplotlib_dir()
+
+try:
+    import matplotlib.pyplot as plt
+except Exception:  # pragma: no cover - matplotlib optional in CI
+    plt = None
 import numpy as np
+try:  # Optional Gurobi exact solver
+    import gurobipy as gp  # type: ignore
+except Exception:  # pragma: no cover - optional dependency
+    gp = None
 from scipy import stats
 
 from src.config import AlgorithmConfig, ProblemConfig
@@ -29,7 +52,12 @@ from src.hea import HEA
 from src.solution import Solution
 
 OUTPUT_DIR = pathlib.Path("results/analysis")
-DRL_MODEL = pathlib.Path("models/drl_model.json")
+DRL_MODEL = pathlib.Path("models/drl_model_transformer_backup.json")
+REMOVAL_METHODS = {
+    "Genetic Algorithm",
+    "Memetic Algorithm",
+    "HEA-DRL",
+}
 
 
 @dataclasses.dataclass
@@ -41,6 +69,9 @@ class ScaleSetting:
     generations: int
     remove_count: int
     seeds: List[int]
+    map_size: tuple[float, float]
+    amr_count: int
+    time_budget: float
 
 
 @dataclasses.dataclass
@@ -52,7 +83,14 @@ class MethodSpec:
     )
     removal_strategy: str | None = None
     remove_override: int | None = None
+    remove_multiplier: float | None = None
     seed_offset: int = 0
+    population_override: int | None = None
+    generations_override: int | None = None
+    crossover_override: float | None = None
+    mutation_override: float | None = None
+    elite_override: float | None = None
+    time_multiplier: float = 1.0
 
 
 @dataclasses.dataclass
@@ -68,49 +106,78 @@ class ExperimentRecord:
 
 class ExperimentSuite:
     def __init__(
-        self, output_dir: pathlib.Path = OUTPUT_DIR, enable_plots: bool = False
+        self,
+        output_dir: pathlib.Path = OUTPUT_DIR,
+        enable_plots: bool = False,
+        time_budget_scale: float = 1.0,
+        seed_cap: int | None = None,
+        scales_filter: List[str] | None = None,
+        methods_filter: List[str] | None = None,
     ) -> None:
         self.output_dir = output_dir
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        self.enable_plots = enable_plots
+        self.enable_plots = enable_plots and plt is not None
+        if enable_plots and plt is None:
+            print("Matplotlib 未可用，自动禁用绘图输出。")
+        self.time_budget_scale = time_budget_scale
+        self.seed_cap = seed_cap
+        self.scales_filter = set(s.lower() for s in scales_filter) if scales_filter else None
+        self.methods_filter = set(m.lower() for m in methods_filter) if methods_filter else None
         self.scales: Dict[str, ScaleSetting] = {
             "small": ScaleSetting(
                 name="small",
-                num_tasks=10,
+                num_tasks=7,
                 distribution="uniform",
-                population_size=16,
-                generations=20,
-                remove_count=3,
-                seeds=[11, 17],
+                population_size=32,
+                generations=80,
+                remove_count=2,
+                seeds=[11, 13, 17, 19],
+                map_size=(50.0, 50.0),
+                amr_count=2,
+                time_budget=30.0,
             ),
             "medium": ScaleSetting(
                 name="medium",
-                num_tasks=30,
+                num_tasks=60,
                 distribution="uniform",
-                population_size=22,
-                generations=30,
-                remove_count=4,
-                seeds=[101, 111],
+                population_size=80,
+                generations=140,
+                remove_count=5,
+                seeds=[101, 103, 105, 107],
+                map_size=(150.0, 150.0),
+                amr_count=8,
+                time_budget=300.0,
             ),
             "large": ScaleSetting(
                 name="large",
-                num_tasks=50,
+                num_tasks=120,
                 distribution="clustered",
-                population_size=26,
-                generations=30,
-                remove_count=5,
-                seeds=[201, 211],
+                population_size=140,
+                generations=160,
+                remove_count=7,
+                seeds=[201, 203, 205, 207],
+                map_size=(250.0, 250.0),
+                amr_count=12,
+                time_budget=600.0,
             ),
         }
+        if self.seed_cap:
+            for scale in self.scales.values():
+                scale.seeds = scale.seeds[: self.seed_cap]
         self.methods: List[MethodSpec] = [
-            MethodSpec(name="Exact MIP", kind="exact", applies_to=("small",)),
             MethodSpec(name="Constructive Heuristic", kind="constructive"),
+            MethodSpec(name="TRIGA", kind="triga"),
             MethodSpec(
                 name="Genetic Algorithm",
                 kind="hea",
                 removal_strategy="random",
-                remove_override=0,
+                remove_multiplier=1.0,
                 seed_offset=5,
+            ),
+            MethodSpec(
+                name="VIGA",
+                kind="viga",
+                seed_offset=9,
             ),
             MethodSpec(
                 name="Memetic Algorithm",
@@ -118,12 +185,53 @@ class ExperimentSuite:
                 removal_strategy="shaw",
                 seed_offset=7,
             ),
-            MethodSpec(name="Ant Colony", kind="aco", seed_offset=9),
+            MethodSpec(name="Ant Colony", kind="aco", seed_offset=11),
             MethodSpec(
                 name="HEA-DRL",
                 kind="hea",
-                removal_strategy="drl",
-                seed_offset=11,
+                removal_strategy="drl_hybrid",
+                seed_offset=5,
+                remove_multiplier=None,
+                population_override=None,
+                generations_override=None,
+                crossover_override=None,
+                mutation_override=None,
+                elite_override=None,
+                time_multiplier=1.0,
+            ),
+            MethodSpec(
+                name="HEA-Random",
+                kind="hea",
+                removal_strategy="random",
+                seed_offset=5,
+                remove_multiplier=None,
+                population_override=None,
+                generations_override=None,
+                crossover_override=None,
+                mutation_override=None,
+                elite_override=None,
+                time_multiplier=1.0,
+            ),
+            MethodSpec(
+                name="HEA-Shaw",
+                kind="hea",
+                removal_strategy="shaw",
+                seed_offset=5,
+                time_multiplier=1.0,
+            ),
+            MethodSpec(
+                name="HEA-WorstSlack",
+                kind="hea",
+                removal_strategy="worst_slack",
+                seed_offset=5,
+                time_multiplier=1.0,
+            ),
+            MethodSpec(
+                name="HEA-MaxDistance",
+                kind="hea",
+                removal_strategy="max_distance",
+                seed_offset=5,
+                time_multiplier=1.0,
             ),
         ]
         self.records: List[ExperimentRecord] = []
@@ -159,10 +267,14 @@ class ExperimentSuite:
     def _run_core_experiments(self) -> List[ExperimentRecord]:
         records: List[ExperimentRecord] = []
         for scale_name, scale in self.scales.items():
+            if self.scales_filter and scale_name.lower() not in self.scales_filter:
+                continue
             for idx, seed in enumerate(scale.seeds):
                 instance = self._build_instance(scale, seed)
                 instance_id = f"{scale_name}_I{idx + 1}"
                 for method in self.methods:
+                    if self.methods_filter and method.name.lower() not in self.methods_filter:
+                        continue
                     if scale_name not in method.applies_to:
                         continue
                     record = self._dispatch_method(
@@ -178,6 +290,8 @@ class ExperimentSuite:
             num_tasks=scale.num_tasks,
             distribution=scale.distribution,
             seed=seed,
+            map_size=scale.map_size,
+            amr_count=scale.amr_count,
         )
         return generate_random_instance(cfg)
 
@@ -198,6 +312,10 @@ class ExperimentSuite:
             return self._run_exact(method.name, scale_name, instance_id, instance)
         if method.kind == "aco":
             return self._run_aco(method.name, scale_name, instance_id, instance, seed)
+        if method.kind == "triga":
+            return self._run_triga(method.name, scale_name, instance_id, instance, seed)
+        if method.kind == "viga":
+            return self._run_viga(method.name, scale_name, instance_id, instance, scale, seed)
         raise ValueError(f"Unsupported method kind: {method.kind}")
 
     # ------------------------------------------------------------------
@@ -213,18 +331,34 @@ class ExperimentSuite:
         seed: int,
     ) -> ExperimentRecord:
         algo_seed = seed + method.seed_offset
-        remove_count = (
-            method.remove_override if method.remove_override is not None else scale.remove_count
-        )
+        remove_count = scale.remove_count
+        if method.remove_override is not None:
+            remove_count = method.remove_override
+        elif method.remove_multiplier is not None:
+            remove_count = max(
+                1, int(round(scale.remove_count * method.remove_multiplier))
+            )
+        removal_strategy = method.removal_strategy or "random"
+        population_size = method.population_override or scale.population_size
+        generations = method.generations_override or scale.generations
+        eval_budget = scale.population_size * (scale.generations + 1)
+        time_budget = scale.time_budget * self.time_budget_scale * method.time_multiplier
+        crossover_rate = method.crossover_override or 0.85
+        mutation_rate = method.mutation_override or 0.2
+        elite_rate = method.elite_override or 0.1
         algo_cfg = AlgorithmConfig(
-            removal_strategy=method.removal_strategy or "random",
+            removal_strategy=removal_strategy,
             remove_count=remove_count,
-            population_size=scale.population_size,
-            generations=scale.generations,
-            crossover_rate=0.85,
-            mutation_rate=0.2,
-            elite_rate=0.1,
-            model_path=str(DRL_MODEL) if method.removal_strategy == "drl" else None,
+            population_size=population_size,
+            generations=generations,
+            crossover_rate=crossover_rate,
+            mutation_rate=mutation_rate,
+            elite_rate=elite_rate,
+            model_path=str(DRL_MODEL)
+            if removal_strategy in {"drl", "drl_hybrid"}
+            else None,
+            eval_budget=eval_budget,
+            time_budget=time_budget,
             seed=algo_seed,
         )
         logger = logging.getLogger(
@@ -232,7 +366,11 @@ class ExperimentSuite:
         )
         logger.handlers = []
         logger.addHandler(logging.NullHandler())
-        agent = self.drl_agent if method.removal_strategy == "drl" else None
+        agent = (
+            self.drl_agent
+            if method.removal_strategy in {"drl", "drl_hybrid"}
+            else None
+        )
         algo = HEA(instance, algo_cfg, logger, agent)
         result = algo.run()
         stats = [(s.elapsed_sec, s.best_cost, s.average_cost) for s in result.stats]
@@ -256,7 +394,7 @@ class ExperimentSuite:
     ) -> ExperimentRecord:
         start = time.perf_counter()
         order = self._nearest_neighbor_order(instance)
-        solution = Solution(instance, order)
+        solution = Solution.from_order(instance, order)
         tardiness = solution.cost()
         elapsed = time.perf_counter() - start
         return ExperimentRecord(
@@ -275,14 +413,135 @@ class ExperimentSuite:
         scale_name: str,
         instance_id: str,
         instance: ProblemInstance,
-    ) -> ExperimentRecord:
+    ) -> ExperimentRecord | None:
         if len(instance.tasks) > 14:
-            raise ValueError("Exact solver is only configured for <=14 tasks")
+            logging.getLogger("suite").warning(
+                "Exact solver skipped for %s (%s tasks > 14)", instance_id, len(instance.tasks)
+            )
+            return None
         start = time.perf_counter()
         order = self._held_karp(instance)
-        solution = Solution(instance, order)
+        solution = Solution.from_order(instance, order)
         tardiness = solution.cost()
         elapsed = time.perf_counter() - start
+        return ExperimentRecord(
+            scale=scale_name,
+            instance_id=instance_id,
+            method=method_name,
+            tardiness=tardiness,
+            time_sec=elapsed,
+            stats=None,
+            timing={"T_total": elapsed},
+        )
+
+    def _run_ortools(
+        self,
+        method_name: str,
+        scale_name: str,
+        instance_id: str,
+        instance: ProblemInstance,
+    ) -> ExperimentRecord | None:
+        logger = logging.getLogger("suite")
+        if pywrapcp is None or routing_enums_pb2 is None:
+            logger.warning("OR-Tools not available, skipping %s for %s", method_name, instance_id)
+            return None
+        n = len(instance.tasks)
+        if n == 0:
+            return None
+        if n > 80:
+            logger.warning("OR-Tools PDP-TW skipped for %s (tasks=%s > 80)", instance_id, n)
+            return None
+        start = time.perf_counter()
+        num_vehicles = max(1, instance.amr_count)
+        depot_node = 0
+        node_count = n + 1  # depot + tasks
+        manager = pywrapcp.RoutingIndexManager(node_count, num_vehicles, depot_node)
+        routing = pywrapcp.RoutingModel(manager)
+
+        def dist_nodes(a: int, b: int) -> float:
+            if a == depot_node:
+                from_task = None
+            else:
+                from_task = instance.tasks[a - 1]
+            if b == depot_node:
+                to_task = None
+            else:
+                to_task = instance.tasks[b - 1]
+            return instance.distance(from_task, to_task)
+
+        def transit_callback(from_index: int, to_index: int) -> int:
+            from_node = manager.IndexToNode(from_index)
+            to_node = manager.IndexToNode(to_index)
+            return int(round(dist_nodes(from_node, to_node)))
+
+        transit_index = routing.RegisterTransitCallback(transit_callback)
+        routing.SetArcCostEvaluatorOfAllVehicles(transit_index)
+
+        # Time windows with service time
+        routing.AddDimension(
+            transit_index,
+            0,  # no slack
+            10000,  # horizon
+            False,
+            "Time",
+        )
+        time_dim = routing.GetDimensionOrDie("Time")
+        for task_idx, task in enumerate(instance.tasks):
+            node = task_idx + 1
+            idx = manager.NodeToIndex(node)
+            time_dim.CumulVar(idx).SetRange(0, int(round(task.due_time)))
+        depot_index = manager.NodeToIndex(depot_node)
+        time_dim.CumulVar(depot_index).SetRange(0, 10000)
+
+        # Capacities
+        demands = [0] + [int(round(t.demand)) for t in instance.tasks]
+        def demand_callback(from_index: int) -> int:
+            from_node = manager.IndexToNode(from_index)
+            return demands[from_node]
+        demand_index = routing.RegisterUnaryTransitCallback(demand_callback)
+        routing.AddDimensionWithVehicleCapacity(
+            demand_index,
+            0,
+            [int(round(instance.vehicle_capacity))] * num_vehicles,
+            True,
+            "Capacity",
+        )
+
+        # Pickup-delivery pairs
+        for task in instance.tasks:
+            if task.is_pickup and task.pair_idx is not None:
+                pick_node = task.idx + 1
+                del_node = task.pair_idx + 1
+                routing.AddPickupAndDelivery(manager.NodeToIndex(pick_node), manager.NodeToIndex(del_node))
+                routing.solver().Add(
+                    routing.VehicleVar(manager.NodeToIndex(pick_node))
+                    == routing.VehicleVar(manager.NodeToIndex(del_node))
+                )
+                routing.solver().Add(
+                    time_dim.CumulVar(manager.NodeToIndex(pick_node))
+                    <= time_dim.CumulVar(manager.NodeToIndex(del_node))
+                )
+
+        search_params = pywrapcp.DefaultRoutingSearchParameters()
+        search_params.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
+        search_params.local_search_metaheuristic = routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
+        search_params.time_limit.FromSeconds(60)
+        solution = routing.SolveWithParameters(search_params)
+        elapsed = time.perf_counter() - start
+        if solution is None:
+            logger.warning("OR-Tools solver failed for %s", instance_id)
+            return None
+
+        routes: List[List[int]] = [[] for _ in range(num_vehicles)]
+        for v in range(num_vehicles):
+            index = routing.Start(v)
+            while not routing.IsEnd(index):
+                node = manager.IndexToNode(index)
+                if node != depot_node:
+                    routes[v].append(node - 1)
+                index = solution.Value(routing.NextVar(index))
+        solution_obj = Solution(instance, routes)
+        tardiness = solution_obj.cost()
         return ExperimentRecord(
             scale=scale_name,
             instance_id=instance_id,
@@ -303,7 +562,7 @@ class ExperimentSuite:
     ) -> ExperimentRecord:
         start = time.perf_counter()
         order = self._ant_colony_opt(instance, seed)
-        solution = Solution(instance, order)
+        solution = Solution.from_order(instance, order)
         tardiness = solution.cost()
         elapsed = time.perf_counter() - start
         return ExperimentRecord(
@@ -314,6 +573,79 @@ class ExperimentSuite:
             time_sec=elapsed,
             stats=None,
             timing={"T_total": elapsed},
+        )
+
+    def _run_triga(
+        self,
+        method_name: str,
+        scale_name: str,
+        instance_id: str,
+        instance: ProblemInstance,
+        seed: int,
+    ) -> ExperimentRecord:
+        start = time.perf_counter()
+        rng = random.Random(seed + 197)
+        best_order: List[int] | None = None
+        best_cost = math.inf
+        trials = 7
+        for t in range(trials):
+            order = self._triga_construct(instance, rng.randint(0, 1_000_000))
+            improved_order, cost = self._two_opt_improve(instance, order)
+            if cost < best_cost:
+                best_cost = cost
+                best_order = improved_order
+        if best_order is None:
+            best_order = list(range(len(instance.tasks)))
+            best_cost = Solution.from_order(instance, best_order).cost()
+        elapsed = time.perf_counter() - start
+        return ExperimentRecord(
+            scale=scale_name,
+            instance_id=instance_id,
+            method=method_name,
+            tardiness=best_cost,
+            time_sec=elapsed,
+            stats=None,
+            timing={"T_total": elapsed},
+        )
+
+    def _run_viga(
+        self,
+        method_name: str,
+        scale_name: str,
+        instance_id: str,
+        instance: ProblemInstance,
+        scale: ScaleSetting,
+        seed: int,
+    ) -> ExperimentRecord:
+        algo_seed = seed + 211
+        algo_cfg = AlgorithmConfig(
+            removal_strategy="random",
+            remove_count=max(1, scale.remove_count - 1),
+            population_size=scale.population_size + 6,
+            generations=scale.generations + 10,
+            crossover_rate=0.9,
+            mutation_rate=0.25,
+            elite_rate=0.15,
+            model_path=None,
+            seed=algo_seed,
+        )
+        logger = logging.getLogger(
+            f"suite.{scale_name}.{instance_id}.{method_name.replace(' ', '_')}"
+        )
+        logger.handlers = []
+        logger.addHandler(logging.NullHandler())
+        algo = HEA(instance, algo_cfg, logger)
+        result = algo.run()
+        stats = [(s.elapsed_sec, s.best_cost, s.average_cost) for s in result.stats]
+        time_sec = result.timing.get("T_total", 0.0)
+        return ExperimentRecord(
+            scale=scale_name,
+            instance_id=instance_id,
+            method=method_name,
+            tardiness=result.best_solution.cost(),
+            time_sec=time_sec,
+            stats=stats,
+            timing=result.timing,
         )
 
     # ------------------------------------------------------------------
@@ -396,7 +728,7 @@ class ExperimentSuite:
             iteration_best_cost = math.inf
             for _ in range(ants):
                 order = self._construct_ant_route(instance, pheromone, depot_pheromone, rng, alpha, beta)
-                cost = Solution(instance, order).cost()
+                cost = Solution.from_order(instance, order).cost()
                 if cost < iteration_best_cost:
                     iteration_best_cost = cost
                     iteration_best_order = order
@@ -490,62 +822,131 @@ class ExperimentSuite:
             pheromone[b][a] += amount
         depot_pheromone[order[-1]] += amount
 
+    def _triga_construct(self, instance: ProblemInstance, rand_seed: int) -> List[int]:
+        rng = random.Random(rand_seed)
+        remaining = list(range(len(instance.tasks)))
+        if not remaining:
+            return []
+        order: List[int] = []
+        current = rng.choice(remaining)
+        order.append(current)
+        remaining.remove(current)
+        while remaining:
+            scored: List[tuple[float, int]] = []
+            for candidate in remaining:
+                if current is None:
+                    dist = instance.distance(None, instance.tasks[candidate])
+                else:
+                    dist = instance.distance(instance.tasks[current], instance.tasks[candidate])
+                demand_penalty = instance.tasks[candidate].demand / instance.vehicle_capacity
+                service_bias = instance.tasks[candidate].service_time / 10.0
+                randomness = rng.random() * 0.05
+                score = dist + 2.0 * demand_penalty + 0.5 * service_bias + randomness
+                scored.append((score, candidate))
+            scored.sort(key=lambda item: item[0])
+            pick = scored[0][1]
+            insert_pos = rng.randint(0, len(order))
+            order.insert(insert_pos, pick)
+            remaining.remove(pick)
+            current = pick
+        return order
+
+    def _two_opt_improve(
+        self, instance: ProblemInstance, order: List[int], max_iterations: int = 25
+    ) -> tuple[List[int], float]:
+        if not order:
+            return [], 0.0
+        best_order = list(order)
+        best_cost = Solution.from_order(instance, best_order).cost()
+        improved = True
+        iterations = 0
+        while improved and iterations < max_iterations:
+            improved = False
+            iterations += 1
+            for i in range(len(best_order) - 2):
+                for j in range(i + 2, len(best_order)):
+                    if j - i == 1:
+                        continue
+                    new_order = (
+                        best_order[: i + 1]
+                        + best_order[i + 1 : j + 1][::-1]
+                        + best_order[j + 1 :]
+                    )
+                    new_cost = Solution.from_order(instance, new_order).cost()
+                    if new_cost < best_cost - 1e-6:
+                        best_cost = new_cost
+                        best_order = new_order
+                        improved = True
+                        break
+                if improved:
+                    break
+        return best_order, best_cost
+
     # ------------------------------------------------------------------
     # Transfer experiments
     # ------------------------------------------------------------------
     def _run_transfer_experiments(self) -> List[dict]:
-        cases = [
-            ("VRPTW", pathlib.Path("data/vrptw_instance.json")),
-            ("EVRPTW", pathlib.Path("data/evrptw_instance.json")),
-        ]
-        results: List[dict] = []
-        for name, path in cases:
-            if not path.exists():
-                raise FileNotFoundError(f"Missing transfer instance: {path}")
-            cfg = ProblemConfig(data_file=str(path))
-            instance = generate_random_instance(cfg)
-            scale = ScaleSetting(
-                name=name,
-                num_tasks=len(instance.tasks),
-                distribution="file",
-                population_size=32,
-                generations=40,
-                remove_count=max(3, len(instance.tasks) // 10),
-                seeds=[999],
-            )
-            baselines = [
-                MethodSpec(
-                    name="Random Removal HEA",
-                    kind="hea",
-                    removal_strategy="random",
-                    remove_override=scale.remove_count,
-                ),
-                MethodSpec(name="HEA-DRL", kind="hea", removal_strategy="drl"),
+        try:
+            problems: List[tuple[str, pathlib.Path]] = []
+            for name, path in [
+                ("VRPTW", pathlib.Path("data/vrptw_instance.json")),
+                ("E-VRPTW", pathlib.Path("data/evrptw_instance.json")),
+            ]:
+                if path.exists():
+                    problems.append((name, path))
+            if not problems:
+                return []
+            methods = [
+                ("HEA-DRL", "drl_hybrid"),
+                ("HEA-Shaw", "shaw"),
+                ("HEA-Random", "random"),
             ]
-            for method in baselines:
-                record = self._run_hea(
-                    method,
-                    scale_name=name,
-                    instance_id=f"{name}_instance",
-                    instance=instance,
-                    scale=scale,
-                    seed=1234,
-                )
-                results.append(
-                    {
-                        "problem": name,
-                        "method": method.name,
-                        "tardiness": record.tardiness,
-                        "time_sec": record.time_sec,
-                    }
-                )
-        return results
+            records: List[dict] = []
+            for problem_name, path in problems:
+                cfg = ProblemConfig(data_file=str(path))
+                tmp_instance = generate_random_instance(cfg)
+                remove_count = max(1, int(0.15 * len(tmp_instance.tasks)))
+                for method_name, strategy in methods:
+                    algo_cfg = AlgorithmConfig(
+                        removal_strategy=strategy,
+                        remove_count=remove_count,
+                        population_size=40,
+                        generations=60,
+                        crossover_rate=0.85,
+                        mutation_rate=0.2,
+                        elite_rate=0.1,
+                        model_path=str(DRL_MODEL) if "drl" in strategy else None,
+                    )
+                    logger = logging.getLogger(f"transfer.{problem_name}.{method_name}")
+                    logger.handlers = []
+                    logger.addHandler(logging.NullHandler())
+                    agent = DRLAgent.load(DRL_MODEL) if "drl" in strategy else None
+                    instance = generate_random_instance(cfg)
+                    algo = HEA(instance, algo_cfg, logger, agent)
+                    result = algo.run()
+                    records.append(
+                        {
+                            "problem": problem_name,
+                            "method": method_name,
+                            "tardiness": result.best_solution.cost(),
+                            "time_sec": result.timing.get("T_total", 0.0),
+                        }
+                    )
+            return records
+        except Exception as exc:
+            logging.getLogger("suite").warning("Transfer experiments skipped: %s", exc)
+            return []
 
     # ------------------------------------------------------------------
     # Artefact generation
     # ------------------------------------------------------------------
     def generate_performance_tables(self) -> None:
         best_ref = self._best_reference()
+        best_positive: Dict[tuple[str, str], float] = {}
+        for r in self.records:
+            key = (r.scale, r.instance_id)
+            if r.tardiness > 1e-9:
+                best_positive[key] = min(best_positive.get(key, float("inf")), r.tardiness)
         grouped: Dict[str, Dict[str, List[ExperimentRecord]]] = defaultdict(
             lambda: defaultdict(list)
         )
@@ -566,13 +967,13 @@ class ExperimentSuite:
                 std_t = statistics.pstdev(tardiness) if len(tardiness) > 1 else 0.0
                 runtimes = [r.time_sec for r in records]
                 mean_time = statistics.mean(runtimes)
-                gaps = [
-                    (r.tardiness - best_ref[(r.scale, r.instance_id)])
-                    / best_ref[(r.scale, r.instance_id)]
-                    * 100.0
-                    for r in records
-                ]
-                mean_gap = statistics.mean(gaps)
+                gaps = []
+                for r in records:
+                    denom = best_ref[(r.scale, r.instance_id)]
+                    if denom <= 1e-9:
+                        denom = best_positive.get((r.scale, r.instance_id), 1.0)
+                    gaps.append((r.tardiness - denom) / denom * 100.0)
+                mean_gap = statistics.mean(gaps) if gaps else 0.0
                 summary[scale][method] = {
                     "mean_tardiness": mean_t,
                     "std_tardiness": std_t,
@@ -594,6 +995,7 @@ class ExperimentSuite:
     def generate_significance_report(self) -> None:
         lines = ["# 统计显著性检验", "", "置信水平：95%，采用 Wilcoxon (配对) 与 Friedman (整体) 检验。", ""]
         report: Dict[str, dict] = {}
+        scale_rankings: Dict[str, dict] = {}
         for scale in ("small", "medium", "large"):
             records = [r for r in self.records if r.scale == scale]
             if not records:
@@ -612,20 +1014,37 @@ class ExperimentSuite:
                 continue
             lines.append(f"## {scale.title()} 实例")
             wilcoxon: List[dict] = []
+            instances = sorted(per_instance.keys())
             for method in complete_methods:
                 if method == "HEA-DRL":
                     continue
                 hea_values = []
                 baseline_values = []
-                for inst in sorted(per_instance.keys()):
+                for inst in instances:
                     hea_values.append(per_instance[inst]["HEA-DRL"])
                     baseline_values.append(per_instance[inst][method])
                 if len(hea_values) < 2:
                     continue
-                stat, p_value = stats.wilcoxon(
-                    hea_values, baseline_values, alternative="less"
-                )
-                lines.append(f"- HEA-DRL vs {method}: p={p_value:.4f}, statistic={stat:.2f}")
+                diffs = [hea - base for hea, base in zip(hea_values, baseline_values)]
+                if all(math.isclose(diff, 0.0, abs_tol=1e-9) for diff in diffs):
+                    stat = 0.0
+                    p_value = 1.0
+                    lines.append(
+                        f"- HEA-DRL vs {method}: 样本完全一致，跳过 Wilcoxon 检验 (p=1.0000, statistic=0.00)"
+                    )
+                else:
+                    try:
+                        stat, p_value = stats.wilcoxon(
+                            hea_values, baseline_values, alternative="less"
+                        )
+                        lines.append(
+                            f"- HEA-DRL vs {method}: p={p_value:.4f}, statistic={stat:.2f}"
+                        )
+                    except ValueError as exc:
+                        lines.append(
+                            f"- HEA-DRL vs {method}: 无法执行 Wilcoxon 检验 ({exc})"
+                        )
+                        continue
                 wilcoxon.append(
                     {
                         "baseline": method,
@@ -634,18 +1053,130 @@ class ExperimentSuite:
                     }
                 )
             # Friedman test across methods with complete data
-            matrix = []
-            for method in complete_methods:
-                matrix.append([per_instance[inst][method] for inst in sorted(per_instance.keys())])
-            friedman_stat, friedman_p = stats.friedmanchisquare(*matrix)
-            lines.append(
-                f"- Friedman χ²={friedman_stat:.3f}, p={friedman_p:.5f}，p<0.05 表示整体差异显著"
-            )
+            friedman_result: dict | None = None
+            if len(complete_methods) < 3 or len(instances) < 2:
+                lines.append("- Friedman 检验跳过：有效策略或实例数量不足。")
+            else:
+                matrix = [
+                    [per_instance[inst][method] for inst in instances]
+                    for method in complete_methods
+                ]
+
+                def _degenerate(mat: List[List[float]]) -> bool:
+                    for column in zip(*mat):
+                        first = column[0]
+                        if any(
+                            not math.isclose(value, first, rel_tol=1e-9, abs_tol=1e-9)
+                            for value in column[1:]
+                        ):
+                            return False
+                    return True
+
+                if _degenerate(matrix):
+                    lines.append("- Friedman 检验跳过：所有策略在各实例上的结果完全一致。")
+                else:
+                    friedman_stat, friedman_p = stats.friedmanchisquare(*matrix)
+                    friedman_result = {
+                        "statistic": float(friedman_stat),
+                        "p_value": float(friedman_p),
+                    }
+                    lines.append(
+                        f"- Friedman χ²={friedman_stat:.3f}, p={friedman_p:.5f}，p<0.05 表示整体差异显著"
+                    )
             lines.append("")
+            if wilcoxon:
+                lines.append("| 对比 | 统计量 | p 值 | 显著性 |")
+                lines.append("| --- | --- | --- | --- |")
+                for entry in wilcoxon:
+                    comparison = f"HEA-DRL vs {entry['baseline']}"
+                    stat_val = entry["statistic"]
+                    p_val = entry["p_value"]
+                    significant = p_val < 0.05
+                    p_str = f"{p_val:.4f}"
+                    if significant:
+                        p_str = f"**{p_str}**"
+                    sig_label = "显著 (p<0.05)" if significant else ""
+                    lines.append(
+                        f"| {comparison} | {stat_val:.2f} | {p_str} | {sig_label} |"
+                    )
+                lines.append("")
             report[scale] = {
                 "wilcoxon": wilcoxon,
-                "friedman": {"statistic": float(friedman_stat), "p_value": float(friedman_p)},
+                "friedman": friedman_result,
             }
+            ranking_info = self._compute_rankings(per_instance, complete_methods, instances)
+            if ranking_info:
+                scale_rankings[scale] = ranking_info
+                lines.append(
+                    f"- 平均排名 (N={ranking_info['num_instances']}), CD={ranking_info['critical_difference']:.3f}"
+                )
+                lines.append("| 算法 | 平均排名 |")
+                lines.append("| --- | --- |")
+                for method, rank_value in sorted(
+                    ranking_info["avg_ranks"].items(), key=lambda item: item[1]
+                ):
+                    lines.append(f"| {method} | {rank_value:.3f} |")
+                lines.append("")
+                report[scale]["ranking"] = ranking_info
+        # Overall ranking across all scales
+        aggregate_instances: Dict[str, Dict[str, float]] = defaultdict(dict)
+        for record in self.records:
+            key = f"{record.scale}_{record.instance_id}"
+            aggregate_instances[key][record.method] = record.tardiness
+        all_methods = sorted({r.method for r in self.records})
+        overall_methods = [
+            m for m in all_methods if all(m in aggregate_instances[inst] for inst in aggregate_instances)
+        ]
+        overall_instances = sorted(aggregate_instances.keys())
+        overall_ranking = self._compute_rankings(
+            aggregate_instances, overall_methods, overall_instances
+        )
+        if overall_ranking:
+            lines.append("## 综合平均排名 (Nemenyi)")
+            lines.append(
+                f"- 使用 {overall_ranking['num_instances']} 个实例计算平均排名，临界差异 CD={overall_ranking['critical_difference']:.3f}"
+            )
+            lines.append("| 算法 | 平均排名 |")
+            lines.append("| --- | --- |")
+            for method, rank_value in sorted(
+                overall_ranking["avg_ranks"].items(), key=lambda item: item[1]
+            ):
+                lines.append(f"| {method} | {rank_value:.3f} |")
+            lines.append("")
+            report["overall"] = {"ranking": overall_ranking}
+            self._plot_cd_diagram(
+                ranking_info=overall_ranking,
+                title="Overall average ranks (Nemenyi)",
+                path=self.output_dir / "nemenyi_cd.png",
+            )
+        removal_methods = [
+            method
+            for method in REMOVAL_METHODS
+            if all(method in aggregate_instances[inst] for inst in aggregate_instances)
+        ]
+        removal_ranking = None
+        if len(removal_methods) >= 2:
+            removal_ranking = self._compute_rankings(
+                aggregate_instances, sorted(removal_methods), overall_instances
+            )
+        if removal_ranking:
+            lines.append("## 移除策略对比 (Friedman + Nemenyi)")
+            lines.append(
+                f"- 仅考虑移除策略不同的 HEA 变体（N={removal_ranking['num_instances']}），CD={removal_ranking['critical_difference']:.3f}"
+            )
+            lines.append("| 算法 | 平均排名 |")
+            lines.append("| --- | --- |")
+            for method, rank_value in sorted(
+                removal_ranking["avg_ranks"].items(), key=lambda item: item[1]
+            ):
+                lines.append(f"| {method} | {rank_value:.3f} |")
+            lines.append("")
+            report["removal_strategies"] = {"ranking": removal_ranking}
+            self._plot_cd_diagram(
+                ranking_info=removal_ranking,
+                title="HEA removal strategies (Nemenyi)",
+                path=self.output_dir / "nemenyi_cd_removals.png",
+            )
         (self.output_dir / "significance_report.md").write_text(
             "\n".join(lines), encoding="utf-8"
         )
@@ -677,22 +1208,9 @@ class ExperimentSuite:
             plt.savefig(self.output_dir / "anytime_best_curve.png")
             plt.close()
 
-            plt.figure(figsize=(7, 4))
-            for method, record in target_methods.items():
-                avg = [item[2] for item in record.stats]
-                plt.plot(range(len(avg)), avg, label=method)
-            plt.xlabel("Generation")
-            plt.ylabel("Average population cost")
-            plt.title("Population average cost (Medium I1)")
-            plt.legend()
-            plt.tight_layout()
-            plt.savefig(self.output_dir / "anytime_population_fitness.png")
-            plt.close()
-
             description.extend(
                 [
                     "- `anytime_best_curve.png`: HEA-DRL、GA 与 MA 在代表性实例中的 anytime 性能。",
-                    "- `anytime_population_fitness.png`: 对应的平均种群适应度稳定性。",
                 ]
             )
         else:
@@ -700,9 +1218,72 @@ class ExperimentSuite:
                 "- 若需生成 `anytime_best_curve.png` 与 `anytime_population_fitness.png`，请在本地运行"
                 " `python analysis/experiment_suite.py --with-plots`。"
             )
+
+        # 平均 anytime 曲线（按规模聚合）
+        if self.enable_plots:
+            avg_notes = []
+            for scale in ("small", "medium", "large"):
+                records = [r for r in self.records if r.scale == scale and r.stats is not None]
+                if not records:
+                    continue
+                methods = sorted({r.method for r in records})
+                # 构建统一时间网格
+                max_time = max(max(t for t, _, _ in r.stats) for r in records)
+                if max_time <= 0:
+                    continue
+                grid = np.linspace(0, max_time, 200)
+                plt.figure(figsize=(7, 4))
+                plotted = False
+                for method in methods:
+                    curves = []
+                    for r in records:
+                        if r.method != method:
+                            continue
+                        t = np.array([item[0] for item in r.stats])
+                        y = np.array([item[1] for item in r.stats])
+                        if len(t) < 2:
+                            continue
+                        curves.append(np.interp(grid, t, y, left=y[0], right=y[-1]))
+                    if curves:
+                        mean_y = np.mean(curves, axis=0)
+                        plt.plot(grid, mean_y, label=method)
+                        plotted = True
+                if plotted:
+                    plt.xlabel("Runtime (s)")
+                    plt.ylabel("Best tardiness (avg over seeds)")
+                    plt.title(f"Anytime average curves ({scale.title()})")
+                    plt.legend()
+                    plt.tight_layout()
+                    fname = f"anytime_avg_{scale}.png"
+                    plt.savefig(self.output_dir / fname)
+                    plt.close()
+                    avg_notes.append(f"- `{fname}`: {scale} 规模的跨种子平均 anytime 曲线。")
+                else:
+                    plt.close()
+            if avg_notes:
+                description.extend(["", "# 按规模平均 Anytime 曲线", ""] + avg_notes)
         (self.output_dir / "anytime_summary.md").write_text(
             "\n".join(description) + "\n", encoding="utf-8"
         )
+        # 保存用于生成 anytime 曲线的原始统计数据
+        stats_dump: List[dict] = []
+        for r in self.records:
+            if r.stats is None:
+                continue
+            stats_dump.append(
+                {
+                    "scale": r.scale,
+                    "instance_id": r.instance_id,
+                    "method": r.method,
+                    "stats": [
+                        {"time": t, "best": b, "avg": a} for (t, b, a) in r.stats
+                    ],
+                }
+            )
+        if stats_dump:
+            (self.output_dir / "anytime_data.json").write_text(
+                json.dumps(stats_dump, indent=2, ensure_ascii=False), encoding="utf-8"
+            )
 
     def generate_transfer_summary(self) -> None:
         lines = ["# 策略迁移实验", ""]
@@ -780,7 +1361,15 @@ class ExperimentSuite:
         lines.append("| --- | --- | --- | --- | --- | --- | --- | --- |")
         plot_data: Dict[str, Dict[str, Dict[str, float]]] = defaultdict(lambda: defaultdict(dict))
         for scale in ("small", "medium", "large"):
-            for method in ["Genetic Algorithm", "Memetic Algorithm", "HEA-DRL"]:
+            for method in [
+                "Genetic Algorithm",
+                "Memetic Algorithm",
+                "HEA-DRL",
+                "HEA-Random",
+                "HEA-Shaw",
+                "HEA-WorstSlack",
+                "HEA-MaxDistance",
+            ]:
                 subset = [
                     r
                     for r in self.records
@@ -851,6 +1440,113 @@ class ExperimentSuite:
             best[key] = min(best.get(key, math.inf), record.tardiness)
         return best
 
+    def _compute_rankings(
+        self,
+        per_instance: Dict[str, Dict[str, float]],
+        methods: Sequence[str],
+        instances: Sequence[str],
+        alpha: float = 0.05,
+    ) -> dict | None:
+        if len(instances) < 2 or len(methods) < 2:
+            return None
+        rank_sums = {method: 0.0 for method in methods}
+        for inst in instances:
+            values = [per_instance[inst][method] for method in methods]
+            ranks = stats.rankdata(values, method="average")
+            for method, rank in zip(methods, ranks):
+                rank_sums[method] += float(rank)
+        num_instances = len(instances)
+        avg_ranks = {method: rank_sums[method] / num_instances for method in methods}
+        k = len(methods)
+        if num_instances == 0:
+            return None
+        q_alpha = stats.studentized_range.ppf(1 - alpha, k, 10_000)
+        if math.isnan(q_alpha):
+            return None
+        cd = q_alpha * math.sqrt(k * (k + 1) / (6.0 * num_instances))
+        return {
+            "avg_ranks": avg_ranks,
+            "num_instances": num_instances,
+            "critical_difference": cd,
+        }
+
+    def _plot_cd_diagram(self, ranking_info: dict, title: str, path: pathlib.Path) -> None:
+        if plt is None:
+            return
+        avg_ranks: Dict[str, float] = ranking_info.get("avg_ranks", {})
+        if not avg_ranks:
+            return
+        cd = ranking_info.get("critical_difference")
+        if not cd:
+            return
+        sorted_methods = sorted(avg_ranks.items(), key=lambda item: item[1])
+        ranks = [rank for _, rank in sorted_methods]
+        labels = [method for method, _ in sorted_methods]
+        fig_height = 1.5 + 0.6 * len(labels)
+        fig, ax = plt.subplots(figsize=(9, fig_height))
+        min_rank = min(ranks) - 0.3
+        max_rank = max(ranks) + 0.3
+        ax.set_xlim(min_rank, max_rank)
+        ax.set_xticks(np.arange(1, len(sorted_methods) + 1))
+        ax.set_xlabel("Average rank (lower is better)")
+        ax.set_yticks([])
+        raw_segments = []
+        for i in range(len(sorted_methods)):
+            start = i
+            end = i
+            for j in range(i + 1, len(sorted_methods)):
+                if ranks[j] - ranks[start] <= cd + 1e-9:
+                    end = j
+                else:
+                    break
+            if end > start:
+                raw_segments.append((start, end))
+        connectors = []
+        for seg in raw_segments:
+            if not any(
+                other is not seg
+                and other[0] <= seg[0]
+                and other[1] >= seg[1]
+                for other in raw_segments
+            ):
+                connectors.append(seg)
+        connector_levels = max(1, len(connectors))
+        connectors_base = len(labels) + 0.3
+        cd_y = connectors_base + 0.3 * connector_levels
+        top_limit = cd_y + 0.5
+        ax.set_ylim(-0.5, top_limit)
+        ax.hlines(len(labels) + 0.1, min_rank, max_rank, color="black", linewidth=1)
+        for idx, (method, rank_value) in enumerate(sorted_methods):
+            y = len(labels) - idx - 0.5
+            ax.plot(rank_value, y, "o", color="black")
+            ax.text(
+                rank_value + 0.1,
+                y,
+                f"{method} ({rank_value:.2f})",
+                va="center",
+                fontsize=10,
+            )
+        for level, (start_idx, end_idx) in enumerate(connectors):
+            y = connectors_base + level * 0.3
+            ax.plot(
+                [ranks[start_idx], ranks[end_idx]],
+                [y, y],
+                color="gray",
+                linewidth=3,
+                alpha=0.8,
+            )
+        ax.plot(
+            [min_rank, min_rank + cd],
+            [cd_y, cd_y],
+            color="black",
+            linewidth=2,
+        )
+        ax.text(min_rank + cd / 2, cd_y + 0.15, f"CD = {cd:.3f}", ha="center")
+        ax.set_title(title)
+        fig.tight_layout()
+        plt.savefig(path)
+        plt.close(fig)
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="HEA-DRL experiment suite")
@@ -865,12 +1561,50 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="本地运行时启用，以生成 PNG 图像 (CI/在线环境默认跳过)",
     )
+    parser.add_argument(
+        "--time-budget-scale",
+        type=float,
+        default=1.0,
+        help="按比例缩放各规模的时间预算，<1 用于快速调试",
+    )
+    parser.add_argument(
+        "--seed-cap",
+        type=int,
+        default=None,
+        help="可选：限制每个规模的种子数量，用于快速调试",
+    )
+    parser.add_argument(
+        "--fast",
+        action="store_true",
+        help="快捷模式：时间预算缩放为 0.001，种子数限制为 1，便于快速回归",
+    )
+    parser.add_argument(
+        "--scales",
+        nargs="+",
+        default=None,
+        help="可选：仅运行指定规模（例：--scales small medium）",
+    )
+    parser.add_argument(
+        "--methods",
+        nargs="+",
+        default=None,
+        help="可选：仅运行指定算法名称（大小写不敏感，示例：--methods HEA-DRL GA VIGA）",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    suite = ExperimentSuite(output_dir=args.output, enable_plots=args.with_plots)
+    time_budget_scale = 0.001 if args.fast else args.time_budget_scale
+    seed_cap = 1 if args.fast else args.seed_cap
+    suite = ExperimentSuite(
+        output_dir=args.output,
+        enable_plots=args.with_plots,
+        time_budget_scale=time_budget_scale,
+        seed_cap=seed_cap,
+        scales_filter=args.scales,
+        methods_filter=args.methods,
+    )
     suite.run()
 
 

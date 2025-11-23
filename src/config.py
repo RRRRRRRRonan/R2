@@ -16,6 +16,8 @@ class ProblemConfig:
     instance_type: str = "random"
     num_tasks: int = 50
     distribution: str = "uniform"
+    map_size: tuple[float, float] = (100.0, 100.0)
+    amr_count: int = 1
     time_windows: bool = False
     seed: int | None = None
     data_file: str | None = None
@@ -33,6 +35,8 @@ class AlgorithmConfig:
     model_path: str | None = None
     use_gpu: bool = False
     train_mode: bool = False
+    time_budget: float | None = None
+    eval_budget: int | None = None
     seed: int | None = None
 
 

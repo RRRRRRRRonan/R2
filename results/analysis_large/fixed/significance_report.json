@@ -1,0 +1,16 @@
+{
+  "large": {
+    "avg_ranks": {
+      "Genetic Algorithm": 6.25,
+      "HEA-DRL": 1.75,
+      "HEA-Random": 5.75,
+      "HEA-Shaw": 4.75,
+      "HEA-WorstSlack": 2.0,
+      "Memetic Algorithm": 3.0,
+      "TRIGA": 4.5,
+      "VIGA": 8.0
+    },
+    "num_instances": 4,
+    "critical_difference": 7.425686134013688
+  }
+}

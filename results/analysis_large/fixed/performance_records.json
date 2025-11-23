@@ -1,0 +1,52 @@
+{
+  "large": {
+    "Genetic Algorithm": {
+      "mean_tardiness": 1219.3185693107544,
+      "std_tardiness": 28.029017285739567,
+      "mean_time": 600.0,
+      "mean_gap": 10.685436630486816
+    },
+    "HEA-DRL": {
+      "mean_tardiness": 1129.5792311425832,
+      "std_tardiness": 59.28058142460883,
+      "mean_time": 600.0,
+      "mean_gap": 2.378992251854488
+    },
+    "HEA-Random": {
+      "mean_tardiness": 1211.2602264034906,
+      "std_tardiness": 23.53945126262319,
+      "mean_time": 600.0,
+      "mean_gap": 9.959803849621293
+    },
+    "HEA-Shaw": {
+      "mean_tardiness": 1201.8652886309678,
+      "std_tardiness": 31.230994881433947,
+      "mean_time": 600.0,
+      "mean_gap": 9.070957959665888
+    },
+    "HEA-WorstSlack": {
+      "mean_tardiness": 1150.854079879801,
+      "std_tardiness": 28.984482660881703,
+      "mean_time": 600.0,
+      "mean_gap": 4.4899695436432205
+    },
+    "Memetic Algorithm": {
+      "mean_tardiness": 1172.2956052450784,
+      "std_tardiness": 49.02771126031481,
+      "mean_time": 600.0,
+      "mean_gap": 6.407279751588157
+    },
+    "TRIGA": {
+      "mean_tardiness": 1190.2644874868486,
+      "std_tardiness": 24.777460072119087,
+      "mean_time": 600.0,
+      "mean_gap": 8.080997715744466
+    },
+    "VIGA": {
+      "mean_tardiness": 1247.1829321840212,
+      "std_tardiness": 38.21778376159279,
+      "mean_time": 4506.686404300002,
+      "mean_gap": 13.234689586886466
+    }
+  }
+}
